@@ -1,0 +1,434 @@
+---
+title: "Data viz practice with ggplot"
+date: "June 8th, 2022"
+output: html_document
+---
+
+## Read in data
+
+Let's start again by reading in the data from yesterday using the `read_csv()` function after loading the `tidyverse`:
+
+```{r}
+library(tidyverse)
+nba_stats <- read_csv("http://www.stat.cmu.edu/cmsac/sure/2022/materials/data/sports/intro_r/nba_2022_player_stats.csv")
+```
+
+
+## Peaking at the data
+
+Write code that displays the column names of `nba_stats`. Also, look at the first six rows of your dataset to get an idea of what these variables look like. Which variables are quantitative, and which are categorical?
+
+```{r}
+colnames(nba_stats)
+head(nba_stats, 6)
+#All are quantitative except position and team
+```
+
+## Always make a bar chart...
+
+Now we'll use the `ggplot()` function to create a **bar plot** of the `position` variable. To make things easier, we provide the code for you to do this below; just uncomment the code and run it to create the bar plot. In what follows, you must answer some questions about the code and plot.
+
+```{r}
+#Create the bar plot of position:
+nba_stats %>%
+  ggplot(aes(x = position)) +
+  geom_bar(fill = "darkblue") +
+  labs(title = "Number of NBA players by position",
+       x = "Position", y = "Number of players",
+       caption = "Source: Basketball-Reference.com")
+```
+
+Answer the following questions about the code and plot:
+
++ In general, `ggplot()` code takes the following format: `ggplot(blank1, aes(x = blank2))`. Looking at the above code, what kind of `R` object should `blank1` be, and what should `blank2` be?
+
+blank1 = nba_stats
+blank2 = position
+
++ What do you think the line `geom_bar(fill = "darkblue")` does?
+
+Create blue colored bars
+
++ What do you think the remaining lines of code do (contained in `labs()`)?
+
+Label the x and y axes and adds a caption 
+
+## More area plots (but bar plots are better!)
+
+Now we'll make a few other **area plots**:
+
++ spine chart
+
++ pie chart
+
++ rose diagram
+
+Your goal for this part is to create each of these plots. These plots can be created by copy-and-pasting the bar plot code from above and modifying it slightly. Follow these directions to create each of these plots:
+
++ **spine chart**: First, copy-and-paste the bar plot code from above. Then, delete the `fill = "darkblue"` within `geom_bar()`. Finally, within `ggplot()`, replace `aes(x = position)` with `aes(x = "", fill = position)`. Also, change the labels in `labs()` if necessary.
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = "", fill = position)) +
+  geom_bar() +
+  labs(title = "Number of NBA players by position",
+       x = "Position", y = "Number of players",
+       caption = "Source: Basketball-Reference.com")
+```
+
++ **pie chart**: First, copy-and-paste the **spine chart code** you just made. Then, after `geom_bar()`, "add" `coord_polar("y")`. Be sure to put plus signs before and after `coord_polar("y")`. Also, change the labels in `labs()` if necessary.
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = "", fill = position)) +
+  geom_bar() +
+  coord_polar("y")+
+  labs(title = "Number of NBA players by position",
+       x = "", y = "", fill = "Position",
+       caption = "Source: Basketball-Reference.com")
+```
+
++ **rose diagram**: First, copy-and-paste your original bar plot code. Then, after `geom_bar(fill = "darkblue")`, "add" `coord_polar() + scale_y_sqrt()`. Be sure to put plus signs before and after `coord_polar() + scale_y_sqrt()`. Also, change the labels in `labs()` if necessary. After you make the rose diagram: In 1-2 sentences, what do you think  `scale_y_sqrt()` does, and what is a benefit to including `scale_y_sqrt()` when making the rose diagram?
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = position)) +
+  geom_bar(fill = "darkblue") +
+  coord_polar() + scale_y_sqrt()+
+  labs(title = "Number of NBA players by position",
+       x = "", y = "",
+       caption = "Source: Basketball-Reference.com")
+```
+I believe scale_y_sqrt() allows the petals of the rose diagram to be proportional to the count because the diagram uses area. 
+
+## Notes on colors in plots
+
+Three types of color scales to work with:
+
+1. __Qualitative__: distinguishing discrete items that don't have an order (nominal categorical). Colors should be distinct and equal with none standing out unless otherwise desired for emphasis.
+
++ Do __NOT__ use a discrete scale on a continuous variable
+
+2. __Sequential__:  when data values are mapped to one shade, e.g., for an ordered categorical variable or low to high continuous variable
+
++ Do __NOT__ use a sequential scale on an unordered variable
+
+3. __Divergent__: think of it as two sequential scales with a natural midpoint
+midpoint could represent 0 (assuming +/- values) or 50% if your data spans the full scale
+
++ Do __NOT__ use a divergent scale on data without natural midpoint
+
+
+### Options for `ggplot2` colors
+
+The default color scheme is pretty bad to put it bluntly, but `ggplot2` has ColorBrewer built in which makes it easy to customize your color scales. For instance, we can make a scatterplot with `three_pointers` on the y-axis and `offensive_rebounds` on the x-axis and using the `geom_point()` layer with each point colored by `position`:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = position)) +
+  geom_point(alpha = 0.5) +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Position") +
+  theme_bw()
+```
+
+_What does `alpha` change?_  It changes the transparency of the points
+
+We can change the color plot for this plot using `scale_color_brewer()` function:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = position)) +
+  geom_point(alpha = 0.5) +
+  scale_color_brewer(palette = "Set2") +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Position") +
+  theme_bw()
+```
+
+Which do you prefer, the default palette or this new one? You can [check out more color palettes here.](https://r-graph-gallery.com/38-rcolorbrewers-palettes.html)
+
+Something you should keep in mind is to pick a [color-blind friendly palette](http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/). One simple way to do this is by using the `ggthemes` package (you need to install it first before running this code!) which has color-blind friendly palettes included:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = position)) +
+  geom_point(alpha = 0.5) +
+  # Notice I did not use library(ggthemes) to do this... just '::'
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Position") +
+  theme_bw()
+```
+
+In terms of displaying color from low to high, the [viridis scales](https://ggplot2.tidyverse.org/reference/scale_viridis.html) are excellent choices (and are also color-blind friendly!). For instance, we can map another continuous variable (`minutes_played`) to the color:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Minutes played") +
+  theme_bw()
+```
+
+What does this reveal about the plot? What happens if you delete `scale_color_viridis_c() +` from above? Which do you prefer? There are less points are offensive rebounds and three-pointers increase. When `scale_color_viridis_c() +` is deleted, the plot is back to a single color, which in my opinion is visually worse off. 
+
+## Notes on themes
+
+You might have noticed above have various changes to the `theme` of plots for customization. __You will constantly be changing the theme of your plots to optimize the display.__ Fortunately, there are a number of built-in themes you can use to start with rather than the default `theme_gray()`:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Minutes played") +
+  theme_gray()
+```
+
+For instance, Prof Yurko will constantly use `theme_bw()` many times throughout the summer:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Minutes played") +
+  theme_bw()
+```
+
+There are options such as `theme_minimal()`:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Minutes played") +
+  theme_minimal()
+```
+
+
+or `theme_classic()`:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Minutes played") +
+  theme_classic()
+```
+
+
+There are also packages with popular, such as the `ggthemes` package which includes, for example, `theme_economist()`:
+
+```{r}
+library(ggthemes)
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Minutes played") +
+  theme_economist()
+```
+
+
+and `theme_fivethirtyeight()` to name a couple:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       color = "Minutes played") +
+  theme_fivethirtyeight()
+```
+
+
+With any theme you have picked, you can then modify specific components directly using the `theme()` layer. There are [many aspects of the plot's theme to modify](https://ggplot2.tidyverse.org/reference/theme.html), such as my decision to move the legend to the bottom of the figure, drop the legend title, and increase the font size for the y-axis:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       title = "Joint distribution of three-pointers and offensive rebounds",
+       subtitle = "NBA statistics from 2021-2022 season",
+       color = "Minutes played") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.text.y = element_text(size = 14),
+        axis.text.x = element_text(size = 6))
+```
+
+If you're tired of explicitly customizing every plot in the same way all the time, then you should make a custom theme. It's quite easy to make a custom theme for `ggplot2` and of course [there are an incredible number of ways to customize your theme](https://themockup.blog/posts/2020-12-26-creating-and-using-custom-ggplot2-themes/). In the code chunk, I modify the `theme_bw()` theme using the `%+replace%` argument to make my new theme named `my_theme()` - which is stored as a function:
+
+```{r}
+my_theme <- function () {
+  # Start with the base font size
+  theme_bw(base_size = 10) %+replace%
+    theme(
+      panel.background  = element_blank(),
+      plot.background = element_rect(fill = "transparent", color = NA), 
+      legend.position = "bottom",
+      legend.background = element_rect(fill = "transparent", color = NA),
+      legend.key = element_rect(fill = "transparent", color = NA),
+      axis.ticks = element_blank(),
+      panel.grid.major = element_line(color = "grey90", size = 0.3), 
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(size = 18, 
+                                hjust = 0, vjust = 0.5, 
+                                face = "bold", 
+                                margin = margin(b = 0.2, unit = "cm")),
+      plot.subtitle = element_text(size = 12, hjust = 0, 
+                                   vjust = 0.5, 
+                                   margin = margin(b = 0.2, unit = "cm")),
+      plot.caption = element_text(size = 7, hjust = 1,
+                                  face = "italic", 
+                                  margin = margin(t = 0.1, unit = "cm")),
+      axis.text.x = element_text(size = 13),
+      axis.text.y = element_text(size = 13)
+    )
+}
+```
+
+
+Now I can go ahead and my plot from before with this theme:
+
+```{r}
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       title = "Joint distribution of three-pointers and offensive rebounds",
+       subtitle = "NBA statistics from 2021-2022 season",
+       color = "Minutes played") +
+  my_theme()
+```
+
+
+```{r}
+#Making my own theme
+
+extra_theme <- function () {
+  font <- "Lato" 
+  # Start with the base font size
+  theme_minimal(base_size = 10) %+replace%
+    theme(
+      panel.background  = element_blank(),
+      plot.background = element_rect(fill = "transparent", color = NA), 
+      legend.position = "bottom",
+      legend.background = element_rect(fill = "transparent", color = NA),
+      legend.key = element_rect(fill = "transparent", color = NA),
+      axis.ticks = element_blank(),
+      panel.grid.major = element_line(color = "grey90", size = 0.3), 
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(size = 16, 
+                                hjust = 0, vjust = 0.5, 
+                                face = "bold", 
+                                margin = margin(t = 0.2, b = 0.2, unit = "cm")),
+      plot.subtitle = element_text(size = 10, hjust = 0, 
+                                   vjust = 0.5, 
+                                   margin = margin(b = 0.2, unit = "cm")),
+      plot.caption = element_text(size = 7, hjust = 1,
+                                  face = "italic", 
+                                  margin = margin(t = 0.1, unit = "cm")),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12)
+    )
+}
+
+nba_stats %>%
+  ggplot(aes(x = offensive_rebounds, y = three_pointers,
+             color = minutes_played)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(x = "Offensive rebounds", y = "Three-pointers",
+       title = "Joint distribution of three-pointers and offensive rebounds",
+       subtitle = "NBA statistics from 2021-2022 season",
+       color = "Minutes played") +
+  extra_theme()
+```
+
+
+```{r}
+##EXTRA
+
+theme_gppr <- function(){ 
+    font <- "Georgia"   #assign font family up front
+    
+    theme_minimal() %+replace%    #replace elements we want to change
+    
+    theme(
+      
+      #grid elements
+      panel.grid.major = element_blank(),    #strip major gridlines
+      panel.grid.minor = element_blank(),    #strip minor gridlines
+      axis.ticks = element_blank(),          #strip axis ticks
+      
+      #since theme_minimal() already strips axis lines, 
+      #we don't need to do that again
+      
+      #text elements
+      plot.title = element_text(             #title
+                   family = font,            #set font family
+                   size = 20,                #set font size
+                   face = 'bold',            #bold typeface
+                   hjust = 0,                #left align
+                   vjust = 2),               #raise slightly
+      
+      plot.subtitle = element_text(          #subtitle
+                   family = font,            #font family
+                   size = 14),               #font size
+      
+      plot.caption = element_text(           #caption
+                   family = font,            #font family
+                   size = 9,                 #font size
+                   hjust = 1),               #right align
+      
+      axis.title = element_text(             #axis titles
+                   family = font,            #font family
+                   size = 10),               #font size
+      
+      axis.text = element_text(              #axis text
+                   family = font,            #axis famuly
+                   size = 9),                #font size
+      
+      axis.text.x = element_text(            #margin for axis text
+                    margin=margin(5, b = 10))
+      
+      #since the legend often requires manual tweaking 
+      #based on plot content, don't define it here
+    )
+}
+```
+
+
+
+
+
+
