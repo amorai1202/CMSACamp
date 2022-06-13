@@ -176,6 +176,19 @@ curry_shots %>%
   theme_bw() + theme(legend.position = "bottom") +
   coord_fixed()
 
+# Where do I see data? Going from white to a color
+
+curry_shots %>% 
+  ggplot(aes(x = shot_x, y = shot_y)) + 
+  stat_density2d(h = 1, bins = 60,
+                 contour = FALSE,
+                 aes(fill = after_stat(density)),
+                 geom = "raster") +
+  scale_fill_gradient(low = "white", # Use white for no observed data 
+                      high = "darkred") +
+  theme_bw() + theme(legend.position = "bottom") +
+  coord_fixed()
+
 
 # Hexagonal binning -------------------------------------------------------
 
