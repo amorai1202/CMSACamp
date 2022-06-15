@@ -137,13 +137,41 @@ Batting
 
 ```{r}
 #Filter events to just outs
+table(Batting$events)
 
+Batting_outs <- Batting %>% 
+  filter(events != "double", events != "field_error", 
+         events != "fielders_choice", events !="home_run", 
+         events !="single", events !="triple") %>% 
+  mutate(events = 
+           fct_recode(events, 
+                      "Double Play" = "double_play",
+                      "Field Out" = "field_out",
+                      "Fielder's Choice Out" = "fielders_choice_out",
+                      "Force Out" = "force_out",
+                      "Grounded into Double Play" = "grounded_into_double_play",
+                      "Sacrifice Bunt" = "sac_bunt",
+                      "Sacrifice Fly" = "sac_fly",
+                      "Sacrifice Fly Double Play" = "sac_fly_double_play")) 
 
+#Table of outs
+table(Batting_outs$events)
+sort(table(Batting_outs$events), decreasing = TRUE)
 
+#Sort as decreasing
+Batting_outs$events <- factor(Batting_outs$events, names(sort(table(Batting_outs$events), increasing = TRUE)))
+
+#Graph
+Batting_outs %>% 
+  ggplot(aes(x = events)) +
+  geom_bar(fill= "#238A8DFF") +
+  coord_flip() +
+  labs(y= "count", x = "Type of outs", title = "Distribution of ways of getting out") +
+  ggthemes::scale_color_colorblind() +
+  theme(axis.text = element_text(angle = 90)) +
+  theme_bw()
+  
 ```
-
-
-
 
 
 # How do left-handed batters and right-handed batters differ?

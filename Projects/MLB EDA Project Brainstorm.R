@@ -27,26 +27,39 @@ length(unique(Batting$player_name)) == nrow(Batting)
 
 head(Batting$bb_type)
 
-# Getting out -------------------------------------------------------------
+# Most common way of getting out -------------------------------------------------------------
 
 table(Batting$events)
 
 Batting_outs <- Batting %>% 
-  filter(!is.na(events), events == c("double_play", "field_out", 
-                                     "fielders_choice_out", "force_out", 
-                                     "grounded_into_double_play", "sac_bunt", 
-                                     "sac_fly", "sac_fly_double_play")) #%>% 
+  filter(events != "double", events != "field_error", 
+         events != "fielders_choice", events !="home_run", 
+         events !="single", events !="triple") %>% 
   mutate(events = 
            fct_recode(events, 
                       "Double Play" = "double_play",
-                      "Field out" = "field_out",
+                      "Field Out" = "field_out",
                       "Fielder's Choice Out" = "fielders_choice_out",
                       "Force Out" = "force_out",
-                      "Grounded Double Play" = "grounded_into_double_play",
+                      "Grounded into Double Play" = "grounded_into_double_play",
                       "Sacrifice Bunt" = "sac_bunt",
                       "Sacrifice Fly" = "sac_fly",
-                      "Sacrifice Fly Double Play" = "sac_fly_double_play"))
+                      "Sacrifice Fly Double Play" = "sac_fly_double_play")) 
 
+table(Batting_outs$events)
+sort(table(Batting_outs$events), decreasing = TRUE)
+
+Batting_outs$events <- factor(Batting_outs$events, names(sort(table(Batting_outs$events), increasing = TRUE)))
+
+Batting_outs %>% 
+  ggplot(aes(x = events)) +
+  geom_bar(fill= "#238A8DFF") +
+  coord_flip() +
+  labs(y= "count", x = "Type of outs", title = "Distribution of ways of getting out") +
+  ggthemes::scale_color_colorblind() +
+  theme(axis.text = element_text(angle = 90)) +
+  theme_bw()
+  
 
 
 # Analyzing change of scores/runs -----------------------------------------
