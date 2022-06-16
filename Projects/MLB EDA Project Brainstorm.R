@@ -222,3 +222,286 @@ filter_Batting %>%
 
 
 
+
+# Most popular pitch type depending on count ------------------------------
+
+# Overall pitch types
+edit_pitch <- Batting %>% 
+  filter(!is.na(pitch_type)) %>% 
+  mutate(pitch_type = fct_recode(pitch_type, "Changeup" = "CH", 
+                                 "Breaking ball" = "CU",
+                                 "Changeup" = "EP",
+                                 "Fastball" = "FA",
+                                 "Fastball" = "FC", 
+                                 "Fastball" = "FF", 
+                                 "Fastball" = "FS",
+                                 "Breaking ball" = "KC",  
+                                 "Fastball" = "SI",  
+                                 "Breaking ball" = "SL"))
+
+# 0-0
+zero_zero <- edit_pitch %>% 
+  filter(balls == 0) %>% 
+  filter(strikes == 0) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "zero_zero")
+
+
+# 0-1
+zero_one <- edit_pitch %>% 
+  filter(balls == 0) %>% 
+  filter(strikes == 1) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "zero_one")
+
+# 0-2
+zero_two <- edit_pitch %>% 
+  filter(balls == 0) %>% 
+  filter(strikes == 2) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "zero_two")
+
+# 1-0
+one_zero <- edit_pitch %>% 
+  filter(balls == 1) %>% 
+  filter(strikes == 0) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "one_zero")
+
+# 1-1
+one_one <- edit_pitch %>% 
+  filter(balls == 1) %>% 
+  filter(strikes == 1) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "one_one")
+
+# 1-2
+one_two <- edit_pitch %>% 
+  filter(balls == 1) %>% 
+  filter(strikes == 2) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "one_two")
+
+# 2-0
+two_zero <- edit_pitch %>% 
+  filter(balls == 2) %>% 
+  filter(strikes == 0) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "two_zero")
+
+
+# 2-1
+two_one <- edit_pitch %>% 
+  filter(balls == 2) %>% 
+  filter(strikes == 1) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "two_one")
+
+# 2-2
+two_two <- edit_pitch %>% 
+  filter(balls == 2) %>% 
+  filter(strikes == 2) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "two_two")
+
+# 3-0
+three_zero <- edit_pitch %>% 
+  filter(balls == 3) %>% 
+  filter(strikes == 0) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "three_zero")
+
+# 3-1
+three_one <- edit_pitch %>% 
+  filter(balls == 3) %>% 
+  filter(strikes == 1) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "three_one")
+
+# 3-2
+three_two <- edit_pitch %>% 
+  filter(balls == 3) %>% 
+  filter(strikes == 2) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "three_two")
+
+prop_count <- zero_zero %>% 
+  rbind(zero_one, zero_two, one_zero, one_one, one_two, two_one, two_two, 
+        two_zero, three_zero, three_one, three_two)
+
+prop_count %>% 
+  ggplot(aes(x = pitch_type, y = prop, fill = count)) +
+  geom_col(position = "dodge") +
+  theme_bw() 
+ 
+
+
+# Initial clustering ------------------------------------------------------
+
+## player name and hit distance, launch speed
+
+# Look at data/ remove na's
+
+Batting <- Batting %>% 
+  filter(!is.na(hit_distance_sc), !is.na(launch_speed)) 
+
+# Standardize first
+
+std_batting <- Batting %>%
+  mutate(std_hit = as.numeric(scale(hit_distance_sc)),
+         std_speed = as.numeric(scale(launch_speed)))
+
+std_batting %>%
+  ggplot(aes(x = std_hit, y = std_speed)) +
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  coord_fixed()
+
+# Try k-means clustering
+
+## elbow plot
+
+# Initialize number of clusters to search over
+n_clusters_search <- 2:12
+tibble(total_wss = 
+         # Compute total WSS for each number by looping with sapply
+         sapply(n_clusters_search,
+                function(k) {
+                  kmeans_results <- kmeans(dplyr::select(std_batting,
+                                                         std_hit,
+                                                         std_speed),
+                                           centers = k, nstart = 30)
+                  # Return the total WSS for choice of k
+                  return(kmeans_results$tot.withinss)
+                })) %>%
+  mutate(k = n_clusters_search) %>%
+  ggplot(aes(x = k, y = total_wss)) +
+  geom_line() + geom_point() +
+  labs(x = "Number of clusters K", y = "Total WSS") +
+  theme_bw()
+
+## k-means
+
+init_kmeans <- 
+  kmeans(dplyr::select(std_batting,
+                       std_hit, std_speed),
+         algorithm = "Lloyd", centers = 3,
+         nstart = 30)
+
+std_batting %>%
+  mutate(batting_clusters = 
+           as.factor(init_kmeans$cluster)) %>%
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batting_clusters)) +
+  geom_point() + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  coord_fixed()
+
+# k-means++
+
+library(flexclust)
+
+init_kmeanspp <- 
+  kcca(dplyr::select(std_batting,
+                     std_hit, std_speed), k = 3,
+       control = list(initcent = "kmeanspp"))
+std_batting %>%
+  mutate(batting_clusters = 
+           as.factor(init_kmeans$cluster)) %>%
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batting_clusters)) +
+  geom_point() + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  coord_fixed()
+
+
+# Try hierarchical clustering
+
+#minimax
+
+library(protoclust)
+
+player_dist <- dist(dplyr::select(std_batting,
+                                  std_hit, std_speed))
+
+batted_minimax <- protoclust(player_dist)
+
+# Look at dendrogram
+library(ggdendro)
+ggdendrogram(batted_minimax, 
+             theme_dendro = FALSE, 
+             labels = FALSE, 
+             leaf_labels = FALSE) + 
+  labs(y = "Maximum dissimilarity from prototype") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+
+
+minimax_player_clusters <- 
+  protocut(batted_minimax, k = 3) #where to cut tree
+
+std_batting %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>%
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = player_clusters)) +
+  geom_point(alpha = 0.3) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
+
+#single
+
+player_dist <- dist(dplyr::select(std_batting,
+                                  std_hit, std_speed))
+
+batted_single_hclust <-
+  hclust(player_dist, method = "single")
+
+
+std_batting %>%
+  mutate(player_clusters = 
+           as.factor(cutree(batted_complete_hclust, k=3))) %>% #cut dendrogram using chosen height h
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = player_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+#complete
+
+batted_complete_hclust <-
+  hclust(player_dist, method = "complete")
+
+std_batting %>%
+  mutate(player_clusters = 
+           as.factor(cutree(batted_complete_hclust, k=3))) %>% #cut dendrogram using chosen height h
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = player_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+

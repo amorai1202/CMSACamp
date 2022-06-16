@@ -173,7 +173,6 @@ Batting_outs %>%
   
 ```
 
-
 # How do left-handed batters and right-handed batters differ?
 
 ```{r}
@@ -203,22 +202,81 @@ filter_Batting <- Batting %>%
 ```
 
 ```{r}
-#Proportion of on-base vs out vs home run
+#Proportion of on-base vs out vs home run based on hand
 
 #table(filter_Batting$events)
 
-proportions(table(filter_Batting$stand, filter_Batting$events))
+left_Batting <- filter_Batting %>% 
+  filter(stand == "L") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "left")
 
-filter_Batting %>% 
-  ggplot(aes(x = stand,
-             fill = events)) +
-  geom_bar(position = "fill") +
-  theme_bw()
+right_Batting <- filter_Batting %>% 
+  filter(stand == "R") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "right")
+
+prop_Batting <- left_Batting %>% 
+  rbind(right_Batting)
+
+prop_Batting %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  labs(y= "Proportion", x = "Events", title = "Distribution of Events Based on Batting Left-handed vs Right-handed") 
 
 ```
+
 ```{r}
-#Chi-squared gof test
-table("Stance" = filter_Batting$stand, 
+#2 proportion t-test (Is 1 group more likely to get on-base, get out, or hit a home-run when analyzed separately?)
+
+#Proportion of on-base
+
+prop_Batting %>% 
+  filter(events == "On-base") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_onbase <- prop_Batting %>% 
+  filter(events == "On-base")
+
+t.test(stand_onbase$prop)
+
+#Proportion of outs
+
+prop_Batting %>% 
+  filter(events == "Out") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_outs <- prop_Batting %>% 
+  filter(events == "Out")
+
+t.test(stand_outs$prop)
+
+#Proportion of home-runs
+
+prop_Batting %>% 
+  filter(events == "Homerun") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_hr <- prop_Batting %>% 
+  filter(events == "Homerun")
+
+t.test(stand_hr$prop)
+```
+
+*** At alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of outs between left and right-handed batters are different.***
+
+```{r}
+#Chi-squared gof test????
+table("Stance" = filter_Batting$hand, 
       "Events" = filter_Batting$events) %>% 
   chisq.test()
 
@@ -226,36 +284,52 @@ table("Stance" = filter_Batting$stand,
 ***At alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the probability of getting on-base, getting out, or hitting a home-run is the same between left-handed and right-handed batters***
 
 ```{r}
-#2 proportion t-test (Is 1 group more likely to get on-base, get out, or hit a home-run when analyzed separately?)
+# Hit location depending on handedness
 
-#Proportion of on-base
+head(Batting)
+Batting$hit_location #there are Na's
 
-stand_onbase <- filter_Batting %>% 
-  group_by(stand, events) %>% 
-  summarize(joint_prob = n() / nrow(filter_Batting), .groups = "drop") %>% 
-  slice(c(1,4))
-
-t.test(stand_onbase$joint_prob)
-
-#Proportion of outs
-stand_outs <- filter_Batting %>% 
-  group_by(stand, events) %>% 
-  summarize(joint_prob = n() / nrow(filter_Batting), .groups = "drop") %>% 
-  slice(c(2,5))
+filter_location <- Batting %>% 
+  filter(!is.na(hit_location)) %>% 
+  group_by(hit_location, stand) 
 
 
-t.test(stand_outs$joint_prob)
+left_location <- filter_location %>% 
+  filter(stand == "L") %>% 
+  group_by(hit_location) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "left")
 
-#Proportion of home-runs
+right_location <- filter_location %>% 
+  filter(stand == "R") %>% 
+  group_by(hit_location) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "right")
 
-stand_hr <- filter_Batting %>% 
-  group_by(stand, events) %>% 
-  summarize(joint_prob = n() / nrow(filter_Batting), .groups = "drop") %>% 
-  slice(c(3,6))
+prop_location <- left_location %>% 
+  rbind(right_location)
 
-t.test(stand_hr$joint_prob)
+prop_location %>% 
+  ggplot(aes(x = hit_location, y = n, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  labs(y= "Count", x = "Hit Location", title = "Distribution of Hit Location Based on Batting Left-handed vs Right-handed") +
+  #scale_x_discrete(labels = "hit_location")
+
+
+
+
 ```
 
-*** At alpha level 0.05, we have insufficient evidence to reject the null hypothesis that the proportion of outs between left and right-handed batters are different.***
+
+
+```{r}
+# Most popular pitch type depending on count 
+
+
+
+
+```
+
 
 
