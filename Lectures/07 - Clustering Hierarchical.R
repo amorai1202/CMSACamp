@@ -127,7 +127,107 @@ ggdendrogram(nba_complete_hclust, theme_dendro = FALSE,
   theme(axis.text.x = element_blank(), 
         axis.title.x = element_blank(),
         axis.ticks.x = element_blank(),
+        panel.grid = element_blank()) +
+  geom_hline(yintercept = 21, linetype = "dashed", color = "darkred") #draw horizontal line
+
+nba_filtered_stats %>%
+  mutate(player_clusters = 
+           as.factor(cutree(nba_complete_hclust, h = 21))) %>% #cut dendrogram using chosen height h
+  ggplot(aes(x = x3pa, y = trb,
+             color = player_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
+# Single linkage ----------------------------------------------------------
+
+nba_single_hclust <-
+  hclust(player_dist, method = "single")
+
+ggdendrogram(nba_single_hclust, theme_dendro = FALSE,
+             labels = FALSE, leaf_labels = FALSE) +
+  labs(y = "Dissimilarity between clusters") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank()) 
+
+
+# Minimax linkage clustering example --------------------------------------
+
+library(protoclust)
+
+nba_minimax <- protoclust(player_dist)
+
+ggdendrogram(nba_minimax, 
+             theme_dendro = FALSE, 
+             labels = FALSE, 
+             leaf_labels = FALSE) + 
+  labs(y = "Maximum dissimilarity from prototype") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
         panel.grid = element_blank())
+
+
+minimax_player_clusters <- 
+  protocut(nba_minimax, k = 3) #where to cut tree
+
+nba_filtered_stats %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>%
+  ggplot(aes(x = x3pa, y = trb,
+             color = player_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+minimax_player_clusters$protos #indices of prototypes
+
+# View who the prototypes are
+nba_prototypes <- nba_filtered_stats %>%
+  dplyr::select(player, pos, age, x3pa, trb) %>%
+  slice(minimax_player_clusters$protos)
+
+# View prototypes on graph 
+
+nba_filtered_stats %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>%
+  ggplot(aes(x = x3pa, y = trb,
+             color = player_clusters)) +
+  geom_point(alpha = 0.5) + 
+  geom_point(data = mutate(nba_prototypes, 
+                           player_clusters = 
+                             as.factor(c(1,2,3))), size = 5) +
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# Label prototypes on graph 
+
+nba_filtered_stats %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>%
+  ggplot(aes(x = x3pa, y = trb,
+             color = player_clusters)) +
+  geom_point(alpha = 0.5) + 
+  geom_label(data = mutate(nba_prototypes, 
+                           player_clusters = 
+                             as.factor(c(1,2,3))), aes(label = player)) +
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# How does player position (pos) relate to our clustering results?
+
+table("Clusters" = minimax_player_clusters$cl,
+      "Positions" = nba_filtered_stats$pos) #after relabeling, chi-squared test and mosaic plot
 
 
 
