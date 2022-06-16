@@ -1,0 +1,304 @@
+---
+title: "MLB EDA Project"
+author: "Amor Ai"
+date: '2022-06-16'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load the data}
+library(tidyverse)
+batted_data <- read_csv("http://www.stat.cmu.edu/cmsac/sure/2022/materials/data/sports/eda_projects/mlb_batted_balls_2022.csv")
+
+Batting <- as_tibble(batted_data)
+```
+
+# General Overview of Dataset/Explanation of Data Structure
+
+```{r overview}
+dim(Batting) #dimensions
+colnames(Batting)
+# head(Batting)
+# tail(Batting)
+# class(Batting)
+```
+
+The data contains... with such and such variables
+
+
+# Hypotheses
+
+1. In what ways are players getting out? (1D - categorical)
+2. How does release speed affect launch speed? (1D - continuous)
+3. How do left-handed batters and right-handed batters differ?
+3. 
+how did we filter the pitch type 
+only fastballs are thrown during a 3-0 count
+
+
+## What is the most common way of getting out? 
+
+```{r getting out}
+#table(Batting$events)
+
+#Filter events to just outs:
+Batting_outs <- Batting %>% 
+  filter(events != "double", events != "field_error", 
+         events != "fielders_choice", events !="home_run", 
+         events !="single", events !="triple") %>% 
+  mutate(events = 
+           fct_recode(events, 
+                      "Double Play" = "double_play",
+                      "Field Out" = "field_out",
+                      "Fielder's Choice Out" = "fielders_choice_out",
+                      "Force Out" = "force_out",
+                      "Grounded into Double Play" = "grounded_into_double_play",
+                      "Sacrifice Bunt" = "sac_bunt",
+                      "Sacrifice Fly" = "sac_fly",
+                      "Sacrifice Fly Double Play" = "sac_fly_double_play")) 
+
+#Table of outs
+table(Batting_outs$events)
+sort(table(Batting_outs$events), decreasing = TRUE)
+
+#Sort as decreasing
+Batting_outs$events <- factor(Batting_outs$events, names(sort(table(Batting_outs$events), increasing = TRUE)))
+
+#Graph
+Batting_outs %>% 
+  ggplot(aes(x = events)) +
+  geom_bar(fill= "#238A8DFF") +
+  coord_flip() +
+  labs(y= "count", x = "Type of outs", title = "Distribution of ways of getting out") +
+  ggthemes::scale_color_colorblind() +
+  theme(axis.text = element_text(angle = 90)) +
+  theme_bw()
+  
+```
+
+## How does release speed affect launch speed?
+
+```{r release and launch speed}
+#Remove NA's
+Batting <- Batting %>% 
+  filter(!is.na(release_speed), !is.na(launch_speed)) 
+
+Batting %>% 
+  ggplot(aes(x = release_speed, y = launch_speed)) +
+  geom_point(alpha = 0.5, color= "#238A8DFF") +
+  theme_bw() +
+  labs(y= "Launch Speed (mph)", x = "Release Speed (mph)", title = "Comparing pitcher's release speed to batter's launch speed")
+```
+
+## Does the event differ according to the handedness of the batter?
+
+```{r proportion of on-base vs out vs home run based on hand}
+
+# Change labels for events
+table(Batting$events)
+
+filter_Batting <- Batting %>% 
+  filter(!is.na(events)) %>% 
+  mutate(events = 
+           fct_recode(events, 
+                      "On-base" = "double",
+                      "On-base" = "field_error",
+                      "Out" = "double_play",
+                      "Out" = "field_out",
+                      "On-base" = "fielders_choice",
+                      "Out" = "fielders_choice_out",
+                      "Homerun" = "home_run",
+                      "Out" = "force_out",
+                      "Out" = "grounded_into_double_play",
+                      "Out" = "sac_bunt",
+                      "Out" = "sac_fly",
+                      "Out" = "sac_fly_double_play",
+                      "On-base" = "single",
+                      "On-base" = "triple"))
+
+#table(filter_Batting$events)
+
+left_Batting <- filter_Batting %>% 
+  filter(stand == "L") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "left")
+
+right_Batting <- filter_Batting %>% 
+  filter(stand == "R") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "right")
+
+prop_Batting <- left_Batting %>% 
+  rbind(right_Batting)
+
+prop_Batting %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  labs(y= "Proportion", x = "Events", title = "Distribution of Events Based on Batting Left-handed vs Right-handed") 
+
+
+```
+### Is the difference significance?
+
+```{r test for significance}
+
+#Proportion of on-base
+
+prop_Batting %>% 
+  filter(events == "On-base") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_onbase <- prop_Batting %>% 
+  filter(events == "On-base")
+
+t.test(stand_onbase$prop)
+
+#Proportion of outs
+
+prop_Batting %>% 
+  filter(events == "Out") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_outs <- prop_Batting %>% 
+  filter(events == "Out")
+
+t.test(stand_outs$prop)
+
+#Proportion of home-runs
+
+prop_Batting %>% 
+  filter(events == "Homerun") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_hr <- prop_Batting %>% 
+  filter(events == "Homerun")
+
+t.test(stand_hr$prop)
+```
+
+***YES, at alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of on-base, outs, and home-runs between left and right-handed batters are different.***
+
+### How does hit location depend on the handedness of the batter?
+
+```{r hit location depending on handedness}
+
+filter_location <- Batting %>% 
+  filter(!is.na(hit_location)) %>%  #get rid of NA's
+  group_by(hit_location, stand) 
+
+left_location <- filter_location %>% 
+  filter(stand == "L") %>% 
+  group_by(hit_location) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "left")
+
+right_location <- filter_location %>% 
+  filter(stand == "R") %>% 
+  group_by(hit_location) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "right")
+
+prop_location <- left_location %>% 
+  rbind(right_location)
+
+prop_location %>% 
+  ggplot(aes(x = hit_location, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  labs(y= "Proportion", x = "Hit Location", title = "Distribution of Hit Location Based on Batting Left-handed vs Right-handed") +
+  scale_x_discrete(limits = c(1:9))
+
+```
+```{r hit location proportion overlap on actual baseball field?}
+
+```
+
+
+
+# Clustering: Clustering players based on hit distance and launch speed
+
+```{r hclust}
+# Look at data/ remove na's
+
+Batting <- Batting %>% 
+  filter(!is.na(hit_distance_sc), !is.na(launch_speed)) 
+
+# Standardize first
+
+std_batting <- Batting %>%
+  mutate(std_hit = as.numeric(scale(hit_distance_sc)),
+         std_speed = as.numeric(scale(launch_speed)))
+
+std_batting %>%
+  ggplot(aes(x = std_hit, y = std_speed)) +
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  coord_fixed()
+
+library(protoclust)
+
+player_dist <- dist(dplyr::select(std_batting,
+                                  std_hit, std_speed))
+
+batted_minimax <- protoclust(player_dist)
+
+# Look at dendrogram
+library(ggdendro)
+ggdendrogram(batted_minimax, 
+             theme_dendro = FALSE, 
+             labels = FALSE, 
+             leaf_labels = FALSE) + 
+  labs(y = "Maximum dissimilarity from prototype") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+
+
+minimax_player_clusters <- 
+  protocut(batted_minimax, k = 3) #where to cut tree
+
+std_batting %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>%
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = player_clusters)) +
+  geom_point(alpha = 0.3) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# How does events relate to our clustering results?
+
+table("Clusters" = minimax_player_clusters$cl,
+      "Events" = filter_Batting$events) 
+
+mosaicplot(table(minimax_player_clusters$cl,
+      filter_Batting$events), main = "Relationship between clusters and events")
+
+```
+
+
+# Conclusions/limitations/future work
+
+
+
+
+
+
+
+
+
