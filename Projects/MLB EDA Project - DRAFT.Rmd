@@ -26,15 +26,19 @@ colnames(Batting)
 # class(Batting)
 ```
 
-The data contains... with such and such variables
+7085 observations of all batted balls from the current 2022 MLB season, through June 10th, courtesy of baseballsavant.com and accessed using the baseballr package
+
+31 variables
 
 
 # Hypotheses
 
 1. In what ways are players getting out? (1D - categorical)
 2. How does release speed affect launch speed? (1D - continuous)
-3. How do left-handed batters and right-handed batters differ?
-3. 
+3. How do left-handed batters and right-handed batters differ? (2D)
+    a.  Does the event differ according to the handedness of the batter? 
+    b.  Does hit location depend on the handedness of the batter?
+4. 
 how did we filter the pitch type 
 only fastballs are thrown during a 3-0 count
 
@@ -190,7 +194,7 @@ t.test(stand_hr$prop)
 
 ***YES, at alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of on-base, outs, and home-runs between left and right-handed batters are different.***
 
-### How does hit location depend on the handedness of the batter?
+### Does hit location depend on the handedness of the batter?
 
 ```{r hit location depending on handedness}
 
@@ -464,15 +468,12 @@ fast_props %>%
 ```
 
 
+# Initial Cluster 1: 
+## Clustering batted balls based on hit distance and launch speed
 
-
-# Clustering: Clustering players based on hit distance and launch speed
-
-```{r hclust}
-# Look at data/ remove na's
-
+```{r clean data}
 Batting <- Batting %>% 
-  filter(!is.na(hit_distance_sc), !is.na(launch_speed)) 
+  filter(!is.na(hit_distance_sc), !is.na(launch_speed)) # Look at data/ remove na's
 
 # Standardize first
 
@@ -485,13 +486,83 @@ std_batting %>%
   geom_point(alpha = 0.5) + 
   theme_bw() +
   coord_fixed()
+```
+
+
+### Trying kmeans
+
+```{r k-means}
+
+# Initialize number of clusters to search over
+n_clusters_search <- 2:12
+tibble(total_wss = 
+         # Compute total WSS for each number by looping with sapply
+         sapply(n_clusters_search,
+                function(k) {
+                  kmeans_results <- kmeans(dplyr::select(std_batting,
+                                                         std_hit,
+                                                         std_speed),
+                                           centers = k, nstart = 30)
+                  # Return the total WSS for choice of k
+                  return(kmeans_results$tot.withinss)
+                })) %>%
+  mutate(k = n_clusters_search) %>%
+  ggplot(aes(x = k, y = total_wss)) +
+  geom_line() + geom_point() +
+  labs(x = "Number of clusters K", y = "Total WSS") +
+  theme_bw()
+
+## k-means
+
+init_kmeans <- 
+  kmeans(dplyr::select(std_batting,
+                       std_hit, std_speed),
+         algorithm = "Lloyd", centers = 3,
+         nstart = 30)
+
+std_batting %>%
+  mutate(batting_clusters = 
+           as.factor(init_kmeans$cluster)) %>%
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batting_clusters)) +
+  geom_point() + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  coord_fixed()
+
+# k-means++
+
+library(flexclust)
+
+init_kmeanspp <- 
+  kcca(dplyr::select(std_batting,
+                     std_hit, std_speed), k = 3,
+       control = list(initcent = "kmeanspp"))
+std_batting %>%
+  mutate(batting_clusters = 
+           as.factor(init_kmeans$cluster)) %>%
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batting_clusters)) +
+  geom_point() + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  coord_fixed()
+
+```
+
+### Trying hclust
+```{r hclust}
+
+#minimax
 
 library(protoclust)
 
-player_dist <- dist(dplyr::select(std_batting,
+batted_dist <- dist(dplyr::select(std_batting,
                                   std_hit, std_speed))
 
-batted_minimax <- protoclust(player_dist)
+batted_minimax <- protoclust(batted_dist)
 
 # Look at dendrogram
 library(ggdendro)
@@ -507,31 +578,78 @@ ggdendrogram(batted_minimax,
         panel.grid = element_blank())
 
 
-minimax_player_clusters <- 
+minimax_batted_clusters <- 
   protocut(batted_minimax, k = 3) #where to cut tree
 
 std_batting %>%
-  mutate(player_clusters = 
-           as.factor(minimax_player_clusters$cl)) %>%
+  mutate(batted_clusters = 
+           as.factor(minimax_batted_clusters$cl)) %>%
   ggplot(aes(x = std_hit, y = std_speed,
-             color = player_clusters)) +
+             color = batted_clusters)) +
   geom_point(alpha = 0.3) + 
   ggthemes::scale_color_colorblind() +
   theme_bw() +
   theme(legend.position = "bottom")
 
+
+#single
+
+batted_dist <- dist(dplyr::select(std_batting,
+                                  std_hit, std_speed))
+
+batted_single_hclust <-
+  hclust(batted_dist, method = "single")
+
+
+std_batting %>%
+  mutate(batted_clusters = 
+           as.factor(cutree(batted_complete_hclust, k=3))) %>% #cut dendrogram using chosen height h
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batted_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+#complete
+
+batted_complete_hclust <-
+  hclust(batted_dist, method = "complete")
+
+std_batting %>%
+  mutate(batted_clusters = 
+           as.factor(cutree(batted_complete_hclust, k=3))) %>% #cut dendrogram using chosen height h
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batted_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
 # How does events relate to our clustering results?
 
-table("Clusters" = minimax_player_clusters$cl,
+table("Clusters" = minimax_batted_clusters$cl,
       "Events" = filter_Batting$events) 
 
-mosaicplot(table(minimax_player_clusters$cl,
+mosaicplot(table(minimax_batted_clusters$cl,
       filter_Batting$events), main = "Relationship between clusters and events")
 
 ```
 
+# Initial Cluster 2: 
+## Clustering players based on hit distance and launch speed (to see which players are strong hitters)
 
-# Conclusions/limitations/future work
+
+
+
+
+# Discussion
+
+- point out limitations & direction for next steps (future work)
+
+## References
+
 
 
 
