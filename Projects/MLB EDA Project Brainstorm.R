@@ -437,10 +437,10 @@ std_batting %>%
 
 library(protoclust)
 
-player_dist <- dist(dplyr::select(std_batting,
+batted_dist <- dist(dplyr::select(std_batting,
                                   std_hit, std_speed))
 
-batted_minimax <- protoclust(player_dist)
+batted_minimax <- protoclust(batted_dist)
 
 # Look at dendrogram
 library(ggdendro)
@@ -456,14 +456,14 @@ ggdendrogram(batted_minimax,
         panel.grid = element_blank())
 
 
-minimax_player_clusters <- 
+minimax_batted_clusters <- 
   protocut(batted_minimax, k = 3) #where to cut tree
 
 std_batting %>%
-  mutate(player_clusters = 
-           as.factor(minimax_player_clusters$cl)) %>%
+  mutate(batted_clusters = 
+           as.factor(minimax_batted_clusters$cl)) %>%
   ggplot(aes(x = std_hit, y = std_speed,
-             color = player_clusters)) +
+             color = batted_clusters)) +
   geom_point(alpha = 0.3) + 
   ggthemes::scale_color_colorblind() +
   theme_bw() +
@@ -473,18 +473,18 @@ std_batting %>%
 
 #single
 
-player_dist <- dist(dplyr::select(std_batting,
+batted_dist <- dist(dplyr::select(std_batting,
                                   std_hit, std_speed))
 
 batted_single_hclust <-
-  hclust(player_dist, method = "single")
+  hclust(batted_dist, method = "single")
 
 
 std_batting %>%
-  mutate(player_clusters = 
+  mutate(batted_clusters = 
            as.factor(cutree(batted_complete_hclust, k=3))) %>% #cut dendrogram using chosen height h
   ggplot(aes(x = std_hit, y = std_speed,
-             color = player_clusters)) +
+             color = batted_clusters)) +
   geom_point(alpha = 0.5) + 
   ggthemes::scale_color_colorblind() +
   theme_bw() +
@@ -493,15 +493,100 @@ std_batting %>%
 #complete
 
 batted_complete_hclust <-
-  hclust(player_dist, method = "complete")
+  hclust(batted_dist, method = "complete")
 
 std_batting %>%
-  mutate(player_clusters = 
+  mutate(batted_clusters = 
            as.factor(cutree(batted_complete_hclust, k=3))) %>% #cut dendrogram using chosen height h
   ggplot(aes(x = std_hit, y = std_speed,
+             color = batted_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
+
+# Summarize batted balls by player name -----------------------------------
+
+#mean(table(Batting$player_name)) 
+#average at bats = 17, remove players who've batted less than 5 times 
+
+players <- Batting %>% 
+  group_by(player_name) %>% 
+  filter(n() > 5) %>%  #filter players who've batted more than 5 times
+  summarise_all(.funs = mean, .groups = "drop") #take player averages
+
+filter_players <- players %>% 
+  drop_na(hit_distance_sc, launch_speed) #get rid of rows that have NA's in hit distance and launch speed
+
+
+# Try hierarchical clustering
+#minimax
+
+library(protoclust)
+player_dist <- dist(dplyr::select(filter_players,
+                                  hit_distance_sc, launch_speed))
+player_minimax <- protoclust(player_dist)
+
+# Look at dendrogram
+library(ggdendro)
+ggdendrogram(player_minimax, 
+             theme_dendro = FALSE, 
+             labels = FALSE, 
+             leaf_labels = FALSE) + 
+  labs(y = "Maximum dissimilarity from prototype") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+
+
+minimax_player_clusters <- 
+  protocut(player_minimax, k = 3) #where to cut tree
+
+filter_players %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>%
+  ggplot(aes(x = hit_distance_sc, y = launch_speed,
              color = player_clusters)) +
   geom_point(alpha = 0.5) + 
   ggthemes::scale_color_colorblind() +
   theme_bw() +
   theme(legend.position = "bottom")
+
+# View who the prototypes are
+player_prototypes <- filter_players %>%
+  dplyr::select(player_name, hit_distance_sc, launch_speed) %>%
+  slice(minimax_player_clusters$protos)
+
+# Label prototypes on graph 
+filter_players %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>%
+  ggplot(aes(x = hit_distance_sc, y = launch_speed,
+             color = player_clusters)) +
+  geom_point(alpha = 0.5) + 
+  geom_label(data = mutate(player_prototypes, 
+                           player_clusters = 
+                             as.factor(c(1,2,3))), aes(label = player_name)) +
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# View cluster 3
+
+best_batters <- filter_players %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>% 
+  filter(player_clusters == 3) %>% 
+  pull(player_name)
+
+data.frame(best_batters) #group of strongest batters this season
+
+
+
+
+
 
