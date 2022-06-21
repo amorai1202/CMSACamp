@@ -1,0 +1,318 @@
+---
+title: "Exploratory Data Analysis on Batted Balls Data for the 2022 MLB Season"
+subtitle: "![MLB Logo](https://www.mlbstatic.com/team-logos/apple-touch-icons-180x180/mlb.png)"  
+author: 
+  - "Amor Ai & Jackie Jovanovic"
+date: 'June 24th, 2022'
+output:
+  xaringan::moon_reader:
+    css: xaringan-themer.css
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      ratio: 16:9
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(
+  fig.width=9, fig.height=3.5, fig.retina=3,
+  out.width = "100%",
+  cache = FALSE,
+  echo = TRUE,
+  message = FALSE, 
+  warning = FALSE,
+  hiline = TRUE
+)
+```
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(xaringanthemer)
+style_mono_accent(
+  base_color = "#1c5253",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "300", "300i"),
+  code_font_google   = google_font("Fira Mono")
+)
+```
+
+<!-- Text can be **bold**, _italic_, ~~strikethrough~~, or `inline code`. -->
+
+<!-- [Link to another slide](#colors). -->
+
+```{r load the data, include = FALSE}
+library(tidyverse)
+library(patchwork)
+library(ggplot2)
+
+batted_data <- read_csv("http://www.stat.cmu.edu/cmsac/sure/2022/materials/data/sports/eda_projects/mlb_batted_balls_2022.csv")
+
+Batting <- as_tibble(batted_data)
+```
+
+# Background
+
+- What is the background and motivation?
+
+---
+
+# Background
+### Dataset
+
+- Batted balls data from the 2022 MLB season through June 10th
+
+- 7,085 observations, 31 variables
+
+- e.g., information on batter’s stand, before and after counts, speed, batted ball type, hit distance, pitch type, outcome, and score
+
+```{r, table, echo = FALSE}
+Batting %>% 
+  select(player_name, stand, events, release_speed, bb_type, 
+         hit_distance_sc) %>% 
+  head(5) %>% 
+  knitr::kable(format = 'html')
+```
+
+---
+# Background
+### Methods (filtering the variables)
+.pull-left[
+a. Events re-coded as "On-Base", "Out", or "Homerun"
+```{r eval=FALSE}
+mutate(events = 
+    fct_recode(events, 
+    "On-base" = "double",
+    "On-base" = "field_error",
+    "Out" = "double_play",
+    "Out" = "field_out",
+    "On-base" = "fielders_choice",
+    "Out" = "fielders_choice_out",
+    "Homerun" = "home_run"
+    ...
+```
+
+       
+]
+
+.pull-right[
+
+b. Pitch Types re-coded as "Fastball", "Change-up", and "Breaking Ball"
+
+```{r eval=FALSE}
+mutate(pitch_type =
+    fct_recode(pitch_type, 
+               "Changeup" = "CH", 
+               "Breaking ball" = "CU",
+               "Changeup" = "EP",
+               "Fastball" = "FA",
+               "Fastball" = "FC", 
+               "Fastball" = "FF", 
+               "Fastball" = "FS",
+               "Breaking ball" = "KC",  
+               "Fastball" = "SI",  
+               "Breaking ball" = "SL"))
+```
+
+
+]
+
+
+---
+
+# Field outs are the most common 
+
+```{r, getting_out, echo = FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+#Filter events to just outs:
+
+Batting_outs <- Batting %>% 
+  filter(events != "double", events != "field_error", 
+         events != "fielders_choice", events !="home_run", 
+         events !="single", events !="triple") %>% 
+  mutate(events = 
+           fct_recode(events, 
+                      "Double Play" = "double_play",
+                      "Field Out" = "field_out",
+                      "Fielder's Choice Out" = "fielders_choice_out",
+                      "Force Out" = "force_out",
+                      "Grounded into Double Play" = "grounded_into_double_play",
+                      "Sacrifice Bunt" = "sac_bunt",
+                      "Sacrifice Fly" = "sac_fly",
+                      "Sacrifice Fly Double Play" = "sac_fly_double_play"))
+#Sort as decreasing
+Batting_outs$events <- factor(Batting_outs$events,
+                              names(sort(table(Batting_outs$events),
+                                         increasing = TRUE)))
+#Graph
+Batting_outs %>% 
+  ggplot(aes(x = events)) +
+  geom_bar(fill= "#238A8DFF") +
+  coord_flip() +
+  labs(y= "count", x = "Type of outs") +
+  ggthemes::scale_color_colorblind() +
+  theme(axis.text = element_text(angle = 90)) +
+  theme_bw()
+
+#title = "Distribution of ways of getting out"
+```
+
+---
+
+# How does release speed affect launch speed? 
+
+```{r, speed, echo=FALSE, fig.align='center'}
+#Remove NA's
+Batting <- Batting %>% 
+  filter(!is.na(release_speed), !is.na(launch_speed)) 
+Batting %>% 
+  ggplot(aes(x = release_speed, y = launch_speed)) +
+  geom_point(alpha = 0.5, color= "#238A8DFF") +
+  theme_bw() +
+  labs(y= "Launch Speed (mph)", x = "Release Speed (mph)")
+       
+#title = "Comparing pitcher's release speed to batter's launch speed"
+```
+
+
+---
+class: inverse center middle
+
+## How do left-handed batters and right-handed batters differ? 
+
+---
+
+## a.  Does the event differ according to the handedness of the batter? 
+
+```{r, hand_props, echo=FALSE, message = FALSE, fig.align='center'}
+
+# Change labels for events
+filter_Batting <- Batting %>% 
+  filter(!is.na(events)) %>% 
+  mutate(events = 
+           fct_recode(events, 
+                      "On-base" = "double",
+                      "On-base" = "field_error",
+                      "Out" = "double_play",
+                      "Out" = "field_out",
+                      "On-base" = "fielders_choice",
+                      "Out" = "fielders_choice_out",
+                      "Homerun" = "home_run",
+                      "Out" = "force_out",
+                      "Out" = "grounded_into_double_play",
+                      "Out" = "sac_bunt",
+                      "Out" = "sac_fly",
+                      "Out" = "sac_fly_double_play",
+                      "On-base" = "single",
+                      "On-base" = "triple"))
+left_Batting <- filter_Batting %>% 
+  filter(stand == "L") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "left")
+right_Batting <- filter_Batting %>% 
+  filter(stand == "R") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "right")
+prop_Batting <- left_Batting %>% 
+  rbind(right_Batting)
+prop_Batting %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  labs(y= "Proportion", x = "Events")
+
+#title = "Distribution of Events Based on Batting Left-handed vs Right-handed"
+```
+***YES, at alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of on-base, outs, and home-runs between left and right-handed batters are different.***
+
+---
+
+# How does the probability of pitch type thrown change depending on the count? 
+
+
+---
+
+# Clustering
+
+
+---
+
+
+# Discussion
+
+- conclusions & big ideas
+
+### Limitations
+
+- point out next steps
+
+---
+
+
+## Appendix
+
+### Is the difference between events and handedness significant?
+
+```{r test for significance}
+#Proportion of on-base
+
+prop_Batting %>% 
+  filter(events == "On-base") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_onbase <- prop_Batting %>% 
+  filter(events == "On-base")
+
+t.test(stand_onbase$prop)
+
+```
+---
+---
+### Is the difference between events and handedness significant?
+
+```{r test for significance}
+#Proportion of outs
+
+prop_Batting %>% 
+  filter(events == "Out") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_outs <- prop_Batting %>% 
+  filter(events == "Out")
+
+t.test(stand_outs$prop)
+```
+---
+
+---
+### Is the difference between events and handedness significant?
+
+```{r test for significance}
+#Proportion of home-runs
+
+prop_Batting %>% 
+  filter(events == "Homerun") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_hr <- prop_Batting %>% 
+  filter(events == "Homerun")
+
+t.test(stand_hr$prop)
+```
+
+***YES, at alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of on-base, outs, and home-runs between left and right-handed batters are different.***
+
+---
+
+### b.  Does hit location depend on the handedness of the batter?
+
+
+---
+
