@@ -37,9 +37,6 @@ style_mono_accent(
 )
 ```
 
-<!-- Text can be **bold**, _italic_, ~~strikethrough~~, or `inline code`. -->
-
-<!-- [Link to another slide](#colors). -->
 
 ```{r load the data, include = FALSE}
 library(tidyverse)
@@ -53,12 +50,24 @@ Batting <- as_tibble(batted_data)
 
 # Background
 
-- What is the background and motivation?
+##Goals:
+
+--
+
+> ** - Understanding baseball data **
+
+--
+
+> ** - Exploring MLB data to identify and communicate trends**
+
+--
+
+> ** - Inform future models that could predict outcomes and improve performance ** 
 
 ---
 
 # Background
-### Dataset
+### Dataset:
 
 - Batted balls data from the 2022 MLB season through June 10th
 
@@ -76,7 +85,7 @@ Batting %>%
 
 ---
 # Background
-### Methods (filtering the variables)
+### Methods:
 .pull-left[
 a. **Events re-coded as "On-Base", "Out", or "Homerun"**
 ```{r eval=FALSE}
@@ -158,30 +167,46 @@ Batting_outs %>%
 
 ---
 
-# How does release speed affect launch speed? 
+class: inverse center middle
 
-```{r, speed, echo=FALSE, fig.align='center', out.width='90%'}
-#Remove NA's
-Batting <- Batting %>% 
-  filter(!is.na(release_speed), !is.na(launch_speed)) 
-Batting %>% 
-  ggplot(aes(x = release_speed, y = launch_speed)) +
-  geom_point(alpha = 0.5, color= "#238A8DFF") +
-  theme_bw() +
-  labs(y= "Launch Speed (mph)", x = "Release Speed (mph)")
-       
-#title = "Comparing pitcher's release speed to batter's launch speed"
+# How do left-handed batters and right-handed batters differ? 
+
+---
+
+## Hit location differs between left and right handed batters
+
+```{r, hit location, echo=FALSE, message = FALSE, fig.align='center' }
+
+# overall pitch types
+edit_pitch <- Batting %>% 
+  filter(!is.na(pitch_type)) %>% 
+  mutate(pitch_type = fct_recode(pitch_type, "Changeup" = "CH", 
+                                 "Breaking ball" = "CU",
+                                 "Changeup" = "EP",
+                                 "Fastball" = "FA",
+                                 "Fastball" = "FC", 
+                                 "Fastball" = "FF", 
+                                 "Fastball" = "FS",
+                                 "Breaking ball" = "KC",  
+                                 "Fastball" = "SI",  
+                                 "Breaking ball" = "SL"))
+
+edit_pitch %>% 
+  ggplot(aes(x = hc_x, y = (hc_y * -1), color = pitch_type)) +
+  geom_point(alpha = 0.3) +
+  labs(x = "horizontal coordinate",
+       y = "vertical coordinate",
+       color = "Pitch Type") +
+  facet_wrap(~ stand) +
+  theme_bw()
+
 ```
 
 
 ---
-class: inverse center middle
+name: events
 
-## How do left-handed batters and right-handed batters differ? 
-
----
-
-# Does the event differ according to the handedness of the batter? 
+## Does the event differ according to the handedness of the batter? 
 
 ```{r, hand_props, echo=FALSE, message = FALSE, fig.align='center', out.width='75%'}
 #a.  Does the event differ according to the handedness of the batter? 
@@ -226,31 +251,26 @@ prop_Batting %>%
 #title = "Distribution of Events Based on Batting Left-handed vs Right-handed"
 #YES, at alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of on-base, outs, and home-runs between left and right-handed batters are different.**
 ```
-> Left-handed batters get on base more often 
+--
+**> Left-handed batters get on base more often **
 
-> Left-handed batters get out less often 
+--
 
-> Right-handed batters hit more homeruns
+**> Left-handed batters get out less often **
+
+--
+
+**> Right-handed batters hit more homeruns**
+
+[***](#signf)
 
 ---
+
+name: next
 
 # How does the probability of pitch type thrown change depending on the count? 
 
 ```{r load new variable, include=FALSE}
-
-# overall pitch types
-edit_pitch <- Batting %>% 
-  filter(!is.na(pitch_type)) %>% 
-  mutate(pitch_type = fct_recode(pitch_type, "Changeup" = "CH", 
-                                 "Breaking ball" = "CU",
-                                 "Changeup" = "EP",
-                                 "Fastball" = "FA",
-                                 "Fastball" = "FC", 
-                                 "Fastball" = "FF", 
-                                 "Fastball" = "FS",
-                                 "Breaking ball" = "KC",  
-                                 "Fastball" = "SI",  
-                                 "Breaking ball" = "SL"))
 
 # 0-0
 zero_zero <- edit_pitch %>% 
@@ -427,7 +447,7 @@ fast_props <- prop_count %>%
                             "3-2" = "three_two"))
 ```
 
-```{r, ptype_counts, echo = FALSE, fig.align='center', fig.height=6, fig.width=12, out.width='75%'}
+```{r, ptype_counts, echo = FALSE, fig.align='center', out.width='70%'}
 library(patchwork)
 counts <- c("0-0", "0-1", "0-2", "1-0", "1-1", "1-2", "2-0", "2-1", "2-2",
             "3-0", "3-1", "3-2")
@@ -457,12 +477,20 @@ g3 <- fast_props %>%
 
 g1 + g2 + g3
 ```
+--
+**> Fastballs are the most common type of pitch**
 
+--
+
+**> Changeups are the least likely to be thrown **
+
+--
+
+**> The only type of pitch thrown during a 3-0 count is a fastball**
 ---
 
 # Clustering
-
-#### Clustering batted balls based on hit distance and launch speed
+- Clustering batted balls based on hit distance and launch speed
 
 ```{r clean data, include = FALSE}
 Batting <- Batting %>% 
@@ -481,8 +509,7 @@ std_batting %>%
   coord_fixed()
 ```
 
-
-```{r k-means, include = FALSE}
+```{r k-means, echo=FALSE, fig.align='center', out.width='40%'}
 # Initialize number of clusters to search over
 n_clusters_search <- 2:12
 tibble(total_wss = 
@@ -501,14 +528,15 @@ tibble(total_wss =
   geom_line() + geom_point() +
   labs(x = "Number of clusters K", y = "Total WSS") +
   theme_bw()
+```
 
-
+```{r, echo=FALSE, fig.align='center', fig.height=3, fig.width=9}
 ## k-means
 
 init_kmeans <- 
   kmeans(dplyr::select(std_batting,
                        std_hit, std_speed),
-         algorithm = "Lloyd", centers = 2,
+         algorithm = "Lloyd", centers = 3,
          nstart = 30)
 
 std_batting %>%
@@ -520,7 +548,8 @@ std_batting %>%
   ggthemes::scale_color_colorblind() +
   theme_bw() +
   theme(legend.position = "bottom") +
-  coord_fixed()
+  coord_fixed() +
+  labs(x = "Standardized hit distance", y = "Standardized launch speed")
 
 #Kmeans tends to be best used for more circular looking patterns. 
 #there’s probably only one cluster here” rather than convincing yourself that there should be more.
@@ -533,7 +562,9 @@ std_batting %>%
 
 #### Clustering players based on hit distance and launch speed (to see which players are strong hitters)
 
-```{r cluster players, include = FALSE}
+.pull-left[
+
+```{r cluster players dendrogram, echo=FALSE,fig.width=6}
 # Summarize batted balls by player name
 
 #mean(table(Batting$player_name)) 
@@ -569,6 +600,12 @@ ggdendrogram(player_minimax,
         axis.ticks.x = element_blank(),
         panel.grid = element_blank())
 
+```
+]
+
+.pull-right[
+
+```{r graph, echo=FALSE, fig.width=4}
 
 minimax_player_clusters <- 
   protocut(player_minimax, k = 3) #where to cut tree
@@ -583,6 +620,14 @@ filter_players %>%
   theme_bw() +
   theme(legend.position = "bottom")
 
+```
+]
+
+---
+
+class: inverse center middle
+
+```{r, echo=FALSE, fig.align='center'}
 # View who the prototypes are
 player_prototypes <- filter_players %>%
   dplyr::select(player_name, hit_distance_sc, launch_speed) %>%
@@ -600,7 +645,8 @@ filter_players %>%
                              as.factor(c(1,2,3))), aes(label = player_name)) +
   ggthemes::scale_color_colorblind() +
   theme_bw() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  labs(x = "Hit Distance (mph)", y = "Launch Speed (mph)")
 
 # View cluster 3
 
@@ -609,17 +655,15 @@ best_batters <- filter_players %>%
            as.factor(minimax_player_clusters$cl)) %>% 
   filter(player_clusters == 3) %>% 
   pull(player_name)
-
 ```
-
-
 ---
 
 ### Strongest batters
 
-```{r, include = FALSE}
-data.frame(best_batters) %>% 
-  knitr::kable(format = 'html')#group of strongest batters this season in terms of further hit distance and highest launch speed
+```{r, echo=FALSE}
+knitr::kable(data.frame(best_batters), format = 'html') 
+
+#group of strongest batters this season in terms of further hit distance and highest launch speed
 ```
 
 
@@ -629,30 +673,108 @@ data.frame(best_batters) %>%
 
 # Discussion
 
-- conclusions & big ideas
+- Most common way of getting out: field out 
 
-  - first
+- Batted balls from left-handed vs right-handed batters do differ (marginally significant)
   
-  - second
-  
-  - third
-  
-  - The probability of a pitch being thrown is not constant throughout an at bat
+- The probability of a pitch being thrown is not constant throughout an at bat
       - The only type of pitch thrown during a 3-0 count is a fastball
+--
 
 ### Limitations
 
+- Relatively small dataset, only 3 months into the season
+
 - Team names are not included in the dataset
 
-- point out next steps
+- Next steps: analyzing scores/results depending on batted balls, modeling
 
 ---
 
-
+class: inverse center middle
 ## Appendix
 
-### b.  Does hit location depend on the handedness of the batter?
+---
+
+## How does release speed affect launch speed? 
+
+```{r, speed, echo=FALSE, fig.align='center', out.width='90%'}
+#Remove NA's
+Batting <- Batting %>% 
+  filter(!is.na(release_speed), !is.na(launch_speed)) 
+Batting %>% 
+  ggplot(aes(x = release_speed, y = launch_speed)) +
+  geom_point(alpha = 0.5, color= "#238A8DFF") +
+  theme_bw() +
+  labs(y= "Launch Speed (mph)", x = "Release Speed (mph)")
+       
+#title = "Comparing pitcher's release speed to batter's launch speed"
+```
 
 
+---
+name: signf
+
+## Significance tests for handedness
+
+```{r test for significance, out.width='25%', echo=FALSE, warning=FALSE, include = FALSE}
+
+#Proportion of on-base
+
+prop_Batting %>% 
+  filter(events == "On-base") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_onbase <- prop_Batting %>% 
+  filter(events == "On-base")
+
+t_onbase <- t.test(stand_onbase$prop)
+
+
+#Proportion of outs
+
+prop_Batting %>% 
+  filter(events == "Out") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_outs <- prop_Batting %>% 
+  filter(events == "Out")
+
+t_outs <- t.test(stand_outs$prop)
+
+
+#Proportion of home-runs
+
+prop_Batting %>% 
+  filter(events == "Homerun") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_hr <- prop_Batting %>% 
+  filter(events == "Homerun")
+
+t_hr <- t.test(stand_hr$prop)
+
+library(broom)
+library(purrr)
+
+tab <- map_df(list(t_onbase, t_outs, t_hr), tidy)
+  
+```
+
+***At alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of on-base, outs, and home-runs between left and right-handed batters are different.***
+
+```{r, echo=FALSE}
+data.frame(events = c("Onbase", "Outs", "Homerun"),
+           p_values = tab$p.value) %>% 
+  knitr::kable(format = 'html') 
+```
+
+[Back](#next)
 ---
 
