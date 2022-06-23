@@ -1,0 +1,333 @@
+---
+title: 'EDA Project: MLB data'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+
+This project will begin on Monday June 13th, and __conclude with a 10-15 minute presentation on Friday, June 24th (either during the morning session from 10:30 to 12 PM or in the afternoon from 1:30 to 3 PM)__. The goal of this project is to practice understanding the structure of a dataset, and to practice generating and evaluating hypotheses using fundamental EDA and data visualization techniques.
+
+## Deliverables
+
+Your team is expected to produce `R Markdown` slides (an example template will be provided shortly) to accompany your 10-15 minute presentation with the following information:
+
+* Explanation of the data structure of the dataset,
+
+* __Three hypotheses__ you are interested in exploring,
+
+* __Three data visualizations__ exploring the hypotheses, at least two of which must be multivariate.  __Each visualization must be in a different format__ from the other two, and you must have at least one categorical and one continuous visualization.
+
+* __One clustering example__,
+
+* Conclusions reached for the hypotheses based on your EDA and data visualizations.
+
+## Timeline
+
+There will be two submission deadlines:
+
+**Friday, June 17th @ 5:00 PM EST** - Each student will push their individual code for the project thus far to their GitHub accounts for review. We will then provide feedback on the code submitted.
+
+**Thursday, June 23rd @ 11:59 PM EST** - Slides and full code must be completed and ready for presentation. Send your slides to Prof Yurko's email ([ryurko@andrew.cmu.edu](mailto:ryurko@andrew.cmu.edu)).  All code, visualizations, and presentations must be made in `R`. Take advantage of examples from lecture and the presentation template, but also feel free to explore material online that may be relevant!
+
+## Data
+
+Your team is assigned the [__MLB batted balls data__](http://www.stat.cmu.edu/cmsac/sure/2022/materials/data/sports/eda_projects/mlb_batted_balls_2022.csv). This dataset contains all batted balls from the current 2022 MLB season, through June 10th, courtesy of [baseballsavant.com](https://baseballsavant.mlb.com/) and accessed using the [`baseballr`](http://billpetti.github.io/baseballr/) package. The code chunk at the end shows how this dataset was constructed in `R`.
+
+Each row of the dataset corresponds to a batted ball and has the following columns:
+
+* `player_name`: Name of the batter in Last, First format
+* `batter`: Unique identifier for the batter
+* `stand`: handedness of hitter, either `L` (left) or `R` (right), note that switch hitters are in this table but they'll switch depending on the pitcher,
+* `events`: categorical event denoting the outcome of the batted ball,
+* `hc_x`: horizontal coordinate of where a batted ball is first touched by a fielder,
+* `hc_y`: vertical coordinate of where a batted ball is first touched by a fielder (note you should take the multiply this by -1 when plotting),
+* `hit_distance_sc`: distance of the batted ball in feet according to Statcast,
+* `launch_speed`: exit velocity of the ball off the bat (mph),
+* `launch_angle`: the vertical angle of the ball off the bat measured from a line parallel to the ground,
+* `hit_location`: positional number of the player who fielded the ball, possible values are 1-9 for each player (see [here](https://en.wikipedia.org/wiki/Baseball_positions)),
+* `bb_type`: batted ball type,
+* `barrel`: indicator if the batted ball was a ["barrel"](https://www.mlb.com/glossary/statcast/barrel),
+* `pitch_type`: type of pitch thrown according to MLB's algorithm,
+* `release_speed`: speed of the pitch measured when the ball is released (mph),
+* `effective_speed`: perceived velocity of the ball, i.e., the velocity of the pitch is adjusted for how close it is to home when it is released (mph)
+* `if_fielding_alignment`: type of infield shift by defense
+* `of_fielding_alignment`: type of outfield shift by defense
+* `game_date`: date of the game (mm/dd/yyyy)
+* `balls`: number of balls in the count,
+* `strikes`: number of strikes in the count,
+* `outs_when_up`: number of outs when the batter is up,
+* `on_1b`: unique identifier for a runner on first base (if there is one),
+* `on_2b`: unique identifier for a runner on second base (if there is one),
+* `on_3b`: unique identifier for a runner on third base (if there is one),
+* `inning`: the inning number,
+* `inning_topbot`: top or bottom of the inning,
+* `home_score`: home team score before batted ball,
+* `away_score`: away team score before batted ball,  
+* `post_home_score`: home team score after batted ball,
+* `post_away_score`: away team score after batted ball,  
+* `des`: description of the batted ball and play.
+
+Note that a full glossary of the features available from MLB's Statcast data can be found [here](https://app.box.com/v/statcast-pitchfx-glossary-pett).
+
+
+## Code to build dataset
+
+```{r, eval = FALSE}
+library(baseballr)
+library(tidyverse)
+
+# Scrape all data for this season:
+batted_balls_2022 <- 
+  scrape_statcast_savant_batter_all(start_date = "2022-01-01",
+                                    end_date = "2022-06-10") %>%
+  dplyr::filter(type == "X")
+
+batted_balls_2022 <- batted_balls_2022 %>%
+  # Only select columns regarding the batted ball with discrete pitch type
+  # information (except for the speed) for now: 
+  dplyr::select(# Batter info:
+                player_name, batter, stand, 
+                # Batted ball info:
+                events, hc_x, hc_y, hit_distance_sc, launch_speed, launch_angle,
+                hit_location, bb_type, barrel,
+                # Pitch info:
+                pitch_type, release_speed, effective_speed, 
+                # Shift info:
+                if_fielding_alignment, of_fielding_alignment,
+                # Game level context:
+                game_date, balls, strikes, outs_when_up, on_1b, on_2b, on_3b, 
+                inning, inning_topbot, home_score, away_score, post_home_score,
+                post_away_score,
+                # Description of play:
+                des)
+
+# Save this file:
+write_csv(batted_balls_2022, 
+          "data/sports/eda_projects/mlb_batted_balls_2022.csv")
+
+```
+
+```{r}
+# Load the data
+library(tidyverse)
+
+batted_data <- read_csv("http://www.stat.cmu.edu/cmsac/sure/2022/materials/data/sports/eda_projects/mlb_batted_balls_2022.csv")
+
+```
+
+```{r}
+# Initial examination of data
+
+Batting <- as_tibble(batted_data)
+
+dim(Batting) #dimensions
+class(Batting) #what the object is
+head(Batting)
+tail(Batting)
+summary(Batting)
+colnames(Batting)
+Batting
+```
+
+# What is the most common way of getting out? 
+
+```{r}
+#Filter events to just outs
+table(Batting$events)
+
+Batting_outs <- Batting %>% 
+  filter(events != "double", events != "field_error", 
+         events != "fielders_choice", events !="home_run", 
+         events !="single", events !="triple") %>% 
+  mutate(events = 
+           fct_recode(events, 
+                      "Double Play" = "double_play",
+                      "Field Out" = "field_out",
+                      "Fielder's Choice Out" = "fielders_choice_out",
+                      "Force Out" = "force_out",
+                      "Grounded into Double Play" = "grounded_into_double_play",
+                      "Sacrifice Bunt" = "sac_bunt",
+                      "Sacrifice Fly" = "sac_fly",
+                      "Sacrifice Fly Double Play" = "sac_fly_double_play")) 
+
+#Table of outs
+table(Batting_outs$events)
+sort(table(Batting_outs$events), decreasing = TRUE)
+
+#Sort as decreasing
+Batting_outs$events <- factor(Batting_outs$events, names(sort(table(Batting_outs$events), increasing = TRUE)))
+
+#Graph
+Batting_outs %>% 
+  ggplot(aes(x = events)) +
+  geom_bar(fill= "#238A8DFF") +
+  coord_flip() +
+  labs(y= "count", x = "Type of outs", title = "Distribution of ways of getting out") +
+  ggthemes::scale_color_colorblind() +
+  theme(axis.text = element_text(angle = 90)) +
+  theme_bw()
+  
+```
+
+# How do left-handed batters and right-handed batters differ?
+
+```{r}
+# Change labels for events
+
+table(Batting$events)
+
+filter_Batting <- Batting %>% 
+  filter(!is.na(events)) %>% 
+  mutate(events = 
+           fct_recode(events, 
+                      "On-base" = "double",
+                      "On-base" = "field_error",
+                      "Out" = "double_play",
+                      "Out" = "field_out",
+                      "On-base" = "fielders_choice",
+                      "Out" = "fielders_choice_out",
+                      "Homerun" = "home_run",
+                      "Out" = "force_out",
+                      "Out" = "grounded_into_double_play",
+                      "Out" = "sac_bunt",
+                      "Out" = "sac_fly",
+                      "Out" = "sac_fly_double_play",
+                      "On-base" = "single",
+                      "On-base" = "triple"))
+
+```
+
+```{r}
+#Proportion of on-base vs out vs home run based on hand
+
+#table(filter_Batting$events)
+
+left_Batting <- filter_Batting %>% 
+  filter(stand == "L") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "left")
+
+right_Batting <- filter_Batting %>% 
+  filter(stand == "R") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "right")
+
+prop_Batting <- left_Batting %>% 
+  rbind(right_Batting)
+
+prop_Batting %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  labs(y= "Proportion", x = "Events", title = "Distribution of Events Based on Batting Left-handed vs Right-handed") 
+
+```
+
+```{r}
+#2 proportion t-test (Is 1 group more likely to get on-base, get out, or hit a home-run when analyzed separately?)
+
+#Proportion of on-base
+
+prop_Batting %>% 
+  filter(events == "On-base") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_onbase <- prop_Batting %>% 
+  filter(events == "On-base")
+
+t.test(stand_onbase$prop)
+
+#Proportion of outs
+
+prop_Batting %>% 
+  filter(events == "Out") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_outs <- prop_Batting %>% 
+  filter(events == "Out")
+
+t.test(stand_outs$prop)
+
+#Proportion of home-runs
+
+prop_Batting %>% 
+  filter(events == "Homerun") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_hr <- prop_Batting %>% 
+  filter(events == "Homerun")
+
+t.test(stand_hr$prop)
+```
+
+*** At alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of outs between left and right-handed batters are different.***
+
+```{r}
+#Chi-squared gof test????
+table("Stance" = filter_Batting$hand, 
+      "Events" = filter_Batting$events) %>% 
+  chisq.test()
+
+```
+***At alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the probability of getting on-base, getting out, or hitting a home-run is the same between left-handed and right-handed batters***
+
+```{r}
+# Hit location depending on handedness
+
+head(Batting)
+Batting$hit_location #there are Na's
+
+filter_location <- Batting %>% 
+  filter(!is.na(hit_location)) %>% 
+  group_by(hit_location, stand) 
+
+
+left_location <- filter_location %>% 
+  filter(stand == "L") %>% 
+  group_by(hit_location) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "left")
+
+right_location <- filter_location %>% 
+  filter(stand == "R") %>% 
+  group_by(hit_location) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "right")
+
+prop_location <- left_location %>% 
+  rbind(right_location)
+
+prop_location %>% 
+  ggplot(aes(x = hit_location, y = n, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  labs(y= "Count", x = "Hit Location", title = "Distribution of Hit Location Based on Batting Left-handed vs Right-handed") +
+  #scale_x_discrete(labels = "hit_location")
+
+
+```
+
+
+
+```{r}
+# Most popular pitch type depending on count 
+
+
+
+
+```
+
+
+

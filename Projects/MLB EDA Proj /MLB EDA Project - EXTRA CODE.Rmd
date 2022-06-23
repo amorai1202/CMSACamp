@@ -1,0 +1,739 @@
+---
+title: "MLB EDA Project"
+author: "Amor Ai"
+date: '2022-06-16'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load the data}
+library(tidyverse)
+batted_data <- read_csv("http://www.stat.cmu.edu/cmsac/sure/2022/materials/data/sports/eda_projects/mlb_batted_balls_2022.csv")
+
+Batting <- as_tibble(batted_data)
+```
+
+# General Overview of Dataset/Explanation of Data Structure
+
+```{r overview}
+dim(Batting) #dimensions
+colnames(Batting)
+# head(Batting)
+# tail(Batting)
+# class(Batting)
+
+summary(Batting)
+```
+
+7085 observations of all batted balls from the current 2022 MLB season, through June 10th, courtesy of baseballsavant.com and accessed using the baseballr package
+
+31 variables
+
+
+# Hypotheses
+
+1. In what ways are players getting out? (1D - categorical)
+2. How does release speed affect launch speed? (1D - continuous)
+3. How do left-handed batters and right-handed batters differ? (2D)
+    a.  Does the event differ according to the handedness of the batter? 
+    b.  Does hit location depend on the handedness of the batter?
+4. How does the probability of pitch type thrown change depending on the count? (2D)
+
+
+## What is the most common way of getting out? 
+
+```{r getting out}
+#table(Batting$events)
+
+#Filter events to just outs:
+Batting_outs <- Batting %>% 
+  filter(events != "double", events != "field_error", 
+         events != "fielders_choice", events !="home_run", 
+         events !="single", events !="triple") %>% 
+  mutate(events = 
+           fct_recode(events, 
+                      "Double Play" = "double_play",
+                      "Field Out" = "field_out",
+                      "Fielder's Choice Out" = "fielders_choice_out",
+                      "Force Out" = "force_out",
+                      "Grounded into Double Play" = "grounded_into_double_play",
+                      "Sacrifice Bunt" = "sac_bunt",
+                      "Sacrifice Fly" = "sac_fly",
+                      "Sacrifice Fly Double Play" = "sac_fly_double_play")) 
+
+#Table of outs
+table(Batting_outs$events)
+sort(table(Batting_outs$events), decreasing = TRUE)
+
+#Sort as decreasing
+Batting_outs$events <- factor(Batting_outs$events, names(sort(table(Batting_outs$events), increasing = TRUE)))
+
+#Graph
+Batting_outs %>% 
+  ggplot(aes(x = events)) +
+  geom_bar(fill= "#238A8DFF") +
+  coord_flip() +
+  labs(y= "count", x = "Type of outs", title = "Distribution of ways of getting out") +
+  ggthemes::scale_color_colorblind() +
+  theme(axis.text = element_text(angle = 90)) +
+  theme_bw()
+  
+```
+
+## How does release speed affect launch speed?
+
+```{r release and launch speed}
+#Remove NA's
+Batting <- Batting %>% 
+  filter(!is.na(release_speed), !is.na(launch_speed)) 
+
+Batting %>% 
+  ggplot(aes(x = release_speed, y = launch_speed)) +
+  geom_point(alpha = 0.5, color= "#238A8DFF") +
+  theme_bw() +
+  labs(y= "Launch Speed (mph)", x = "Release Speed (mph)", title = "Comparing pitcher's release speed to batter's launch speed")
+```
+
+## Does the event differ according to the handedness of the batter?
+
+```{r proportion of on-base vs out vs home run based on hand}
+
+# Change labels for events
+table(Batting$events)
+
+filter_Batting <- Batting %>% 
+  filter(!is.na(events)) %>% 
+  mutate(events = 
+           fct_recode(events, 
+                      "On-base" = "double",
+                      "On-base" = "field_error",
+                      "Out" = "double_play",
+                      "Out" = "field_out",
+                      "On-base" = "fielders_choice",
+                      "Out" = "fielders_choice_out",
+                      "Homerun" = "home_run",
+                      "Out" = "force_out",
+                      "Out" = "grounded_into_double_play",
+                      "Out" = "sac_bunt",
+                      "Out" = "sac_fly",
+                      "Out" = "sac_fly_double_play",
+                      "On-base" = "single",
+                      "On-base" = "triple"))
+
+#table(filter_Batting$events)
+
+left_Batting <- filter_Batting %>% 
+  filter(stand == "L") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "left")
+
+right_Batting <- filter_Batting %>% 
+  filter(stand == "R") %>% 
+  group_by(events) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "right")
+
+prop_Batting <- left_Batting %>% 
+  rbind(right_Batting)
+
+prop_Batting %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  labs(y= "Proportion", x = "Events", title = "Distribution of Events Based on Batting Left-handed vs Right-handed") 
+
+
+```
+### Is the difference significance?
+
+```{r test for significance}
+
+#Proportion of on-base
+
+prop_Batting %>% 
+  filter(events == "On-base") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_onbase <- prop_Batting %>% 
+  filter(events == "On-base")
+
+t.test(stand_onbase$prop)
+
+#Proportion of outs
+
+prop_Batting %>% 
+  filter(events == "Out") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_outs <- prop_Batting %>% 
+  filter(events == "Out")
+
+t.test(stand_outs$prop)
+
+#Proportion of home-runs
+
+prop_Batting %>% 
+  filter(events == "Homerun") %>% 
+  ggplot(aes(x = events, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw()
+
+stand_hr <- prop_Batting %>% 
+  filter(events == "Homerun")
+
+t.test(stand_hr$prop)
+```
+
+***YES, at alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of on-base, outs, and home-runs between left and right-handed batters are different.***
+
+### Does hit location depend on the handedness of the batter?
+
+```{r hit location depending on handedness}
+
+filter_location <- Batting %>% 
+  filter(!is.na(hit_location)) %>%  #get rid of NA's
+  group_by(hit_location, stand) 
+
+left_location <- filter_location %>% 
+  filter(stand == "L") %>% 
+  group_by(hit_location) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "left")
+
+right_location <- filter_location %>% 
+  filter(stand == "R") %>% 
+  group_by(hit_location) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n), hand = "right")
+
+prop_location <- left_location %>% 
+  rbind(right_location)
+
+prop_location %>% 
+  ggplot(aes(x = hit_location, y = prop, fill = hand)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  labs(y= "Proportion", x = "Hit Location", title = "Distribution of Hit Location Based on Batting Left-handed vs Right-handed") +
+  scale_x_discrete(limits = c(1:9))
+
+```
+```{r hit location proportion overlap on actual baseball field?}
+
+```
+
+## How likely is a pitch type for each count?
+
+```{r load new variable}
+
+# overall pitch types
+edit_pitch <- Batting %>% 
+  filter(!is.na(pitch_type)) %>% 
+  mutate(pitch_type = fct_recode(pitch_type, "Changeup" = "CH", 
+                                 "Breaking ball" = "CU",
+                                 "Changeup" = "EP",
+                                 "Fastball" = "FA",
+                                 "Fastball" = "FC", 
+                                 "Fastball" = "FF", 
+                                 "Fastball" = "FS",
+                                 "Breaking ball" = "KC",  
+                                 "Fastball" = "SI",  
+                                 "Breaking ball" = "SL"))
+
+# 0-0
+zero_zero <- edit_pitch %>% 
+  filter(balls == 0) %>% 
+  filter(strikes == 0) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "zero_zero")
+
+
+# 0-1
+zero_one <- edit_pitch %>% 
+  filter(balls == 0) %>% 
+  filter(strikes == 1) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "zero_one")
+
+# 0-2
+zero_two <- edit_pitch %>% 
+  filter(balls == 0) %>% 
+  filter(strikes == 2) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "zero_two")
+
+# 1-0
+one_zero <- edit_pitch %>% 
+  filter(balls == 1) %>% 
+  filter(strikes == 0) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "one_zero")
+
+# 1-1
+one_one <- edit_pitch %>% 
+  filter(balls == 1) %>% 
+  filter(strikes == 1) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "one_one")
+
+# 1-2
+one_two <- edit_pitch %>% 
+  filter(balls == 1) %>% 
+  filter(strikes == 2) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "one_two")
+
+# 2-0
+two_zero <- edit_pitch %>% 
+  filter(balls == 2) %>% 
+  filter(strikes == 0) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "two_zero")
+
+
+# 2-1
+two_one <- edit_pitch %>% 
+  filter(balls == 2) %>% 
+  filter(strikes == 1) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "two_one")
+
+# 2-2
+two_two <- edit_pitch %>% 
+  filter(balls == 2) %>% 
+  filter(strikes == 2) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "two_two")
+
+# 3-0
+three_zero <- edit_pitch %>% 
+  filter(balls == 3) %>% 
+  filter(strikes == 0) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "three_zero")
+
+# 3-1
+three_one <- edit_pitch %>% 
+  filter(balls == 3) %>% 
+  filter(strikes == 1) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "three_one")
+
+# 3-2
+three_two <- edit_pitch %>% 
+  filter(balls == 3) %>% 
+  filter(strikes == 2) %>% 
+  group_by(pitch_type) %>% 
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), count = "three_two")
+
+prop_count <- zero_zero %>% 
+  rbind(zero_one, zero_two, one_zero, one_one, one_two, two_one, two_two, 
+        two_zero, three_zero, three_one, three_two)
+
+prop_count %>% 
+  ggplot(aes(x = pitch_type, y = prop, fill = count)) +
+  geom_col(position = "dodge") +
+  theme_bw() 
+
+# write csv so all objects don't have to be loaded every time
+write_csv(prop_count, "prop_count.csv")
+
+# load csv
+library(readr)
+prop_count <- read_csv("prop_count.csv")
+View(prop_count)
+
+```
+
+```{r pitch type}
+
+changeup_props <- prop_count %>% 
+  filter(pitch_type == "Changeup") %>% 
+  mutate(count = fct_recode(count,
+                            "0-0" = "zero_zero",
+                            "0-1" = "zero_one",
+                            "0-2" = "zero_two",
+                            "1-0" = "one_zero", 
+                            "1-1" = "one_one", 
+                            "1-2" = "one_two",
+                            "2-0" = "two_zero",
+                            "2-1" = "two_one", 
+                            "2-2" = "two_two",
+                            "3-1" = "three_one", 
+                            "3-2" = "three_two"))
+
+breaking_props <- prop_count %>% 
+  filter(pitch_type == "Breaking ball") %>% 
+  mutate(count = fct_recode(count,
+                            "0-0" = "zero_zero",
+                            "0-1" = "zero_one",
+                            "0-2" = "zero_two",
+                            "1-0" = "one_zero", 
+                            "1-1" = "one_one", 
+                            "1-2" = "one_two",
+                            "2-0" = "two_zero",
+                            "2-1" = "two_one", 
+                            "2-2" = "two_two",
+                            "3-1" = "three_one", 
+                            "3-2" = "three_two"))
+  
+  
+breaking_props <- breaking_props %>% 
+  mutate(count = fct_recode(count,
+                            "0-0" = "zero_zero",
+                            "0-1" = "zero_one",
+                            "0-2" = "zero_two",
+                            "1-0" = "one_zero", 
+                            "1-1" = "one_one", 
+                            "1-2" = "one_two",
+                            "2-0" = "two_zero",
+                            "2-1" = "two_one", 
+                            "2-2" = "two_two",
+                            "3-1" = "three_one", 
+                            "3-2" = "three_two"))
+
+fast_props <- prop_count %>% 
+  filter(pitch_type == "Fastball")
+fast_props <- prop_count %>% 
+  filter(pitch_type == "Fastball") %>% 
+  mutate(count = fct_recode(count,
+                            "0-0" = "zero_zero",
+                            "0-1" = "zero_one",
+                            "0-2" = "zero_two",
+                            "1-0" = "one_zero", 
+                            "1-1" = "one_one", 
+                            "1-2" = "one_two",
+                            "2-0" = "two_zero",
+                            "2-1" = "two_one", 
+                            "2-2" = "two_two",
+                            "3-0" = "three_zero", 
+                            "3-1" = "three_one", 
+                            "3-2" = "three_two"))
+
+
+# checking to make sure 3-0 is only fastballs
+try <- Batting %>% 
+  filter(balls == 3) %>% 
+  filter(strikes == 0) %>% 
+  arrange(pitch_type)
+
+
+counts <- c("0-0", "0-1", "0-2", "1-0", "1-1", "1-2", "2-0", "2-1", "2-2",
+            "3-0", "3-1", "3-2")
+counts2 <- c("0-0", "0-1", "0-2", "1-0", "1-1", "1-2", "2-0", "2-1", "2-2",
+            "3-1", "3-2")
+
+changeup_props %>% 
+  ggplot(aes(x = count, y = prop)) +
+  #geom_point() +
+  theme_bw() +
+  geom_col() +
+  labs(title = "Changeup") +
+  scale_x_discrete(limits = counts2)
+
+breaking_props %>% 
+  ggplot(aes(x = count, y = prop)) +
+  theme_bw() +
+  geom_col() +
+  labs(title = "Breaking balls") +
+  scale_x_discrete(limits = counts2)
+
+fast_props %>% 
+  ggplot(aes(x = count, y = prop)) +
+  theme_bw() +
+  geom_col() +
+  labs(title = "Fastball") +
+  scale_x_discrete(limits = counts)
+
+
+```
+
+
+# Initial Cluster 1: 
+## Clustering batted balls based on hit distance and launch speed
+
+```{r clean data}
+Batting <- Batting %>% 
+  filter(!is.na(hit_distance_sc), !is.na(launch_speed)) # Look at data/ remove na's
+
+# Standardize first
+
+std_batting <- Batting %>%
+  mutate(std_hit = as.numeric(scale(hit_distance_sc)),
+         std_speed = as.numeric(scale(launch_speed)))
+
+std_batting %>%
+  ggplot(aes(x = std_hit, y = std_speed)) +
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  coord_fixed()
+```
+
+
+### Trying kmeans
+
+```{r k-means}
+
+# Initialize number of clusters to search over
+n_clusters_search <- 2:12
+tibble(total_wss = 
+         # Compute total WSS for each number by looping with sapply
+         sapply(n_clusters_search,
+                function(k) {
+                  kmeans_results <- kmeans(dplyr::select(std_batting,
+                                                         std_hit,
+                                                         std_speed),
+                                           centers = k, nstart = 30)
+                  # Return the total WSS for choice of k
+                  return(kmeans_results$tot.withinss)
+                })) %>%
+  mutate(k = n_clusters_search) %>%
+  ggplot(aes(x = k, y = total_wss)) +
+  geom_line() + geom_point() +
+  labs(x = "Number of clusters K", y = "Total WSS") +
+  theme_bw()
+
+## k-means
+
+init_kmeans <- 
+  kmeans(dplyr::select(std_batting,
+                       std_hit, std_speed),
+         algorithm = "Lloyd", centers = 3,
+         nstart = 30)
+
+std_batting %>%
+  mutate(batting_clusters = 
+           as.factor(init_kmeans$cluster)) %>%
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batting_clusters)) +
+  geom_point() + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  coord_fixed()
+
+# k-means++
+
+library(flexclust)
+
+init_kmeanspp <- 
+  kcca(dplyr::select(std_batting,
+                     std_hit, std_speed), k = 3,
+       control = list(initcent = "kmeanspp"))
+std_batting %>%
+  mutate(batting_clusters = 
+           as.factor(init_kmeans$cluster)) %>%
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batting_clusters)) +
+  geom_point() + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  coord_fixed()
+
+```
+
+### Trying hclust
+```{r hclust}
+
+#minimax
+
+library(protoclust)
+
+batted_dist <- dist(dplyr::select(std_batting,
+                                  std_hit, std_speed))
+
+batted_minimax <- protoclust(batted_dist)
+
+# Look at dendrogram
+library(ggdendro)
+ggdendrogram(batted_minimax, 
+             theme_dendro = FALSE, 
+             labels = FALSE, 
+             leaf_labels = FALSE) + 
+  labs(y = "Maximum dissimilarity from prototype") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+
+
+minimax_batted_clusters <- 
+  protocut(batted_minimax, k = 3) #where to cut tree
+
+std_batting %>%
+  mutate(batted_clusters = 
+           as.factor(minimax_batted_clusters$cl)) %>%
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batted_clusters)) +
+  geom_point(alpha = 0.3) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
+#single
+
+batted_dist <- dist(dplyr::select(std_batting,
+                                  std_hit, std_speed))
+
+batted_single_hclust <-
+  hclust(batted_dist, method = "single")
+
+
+std_batting %>%
+  mutate(batted_clusters = 
+           as.factor(cutree(batted_complete_hclust, k=3))) %>% #cut dendrogram using chosen height h
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batted_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+#complete
+
+batted_complete_hclust <-
+  hclust(batted_dist, method = "complete")
+
+std_batting %>%
+  mutate(batted_clusters = 
+           as.factor(cutree(batted_complete_hclust, k=3))) %>% #cut dendrogram using chosen height h
+  ggplot(aes(x = std_hit, y = std_speed,
+             color = batted_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
+# How does events relate to our clustering results?
+
+table("Clusters" = minimax_batted_clusters$cl,
+      "Events" = filter_Batting$events) 
+
+mosaicplot(table(minimax_batted_clusters$cl,
+      filter_Batting$events), main = "Relationship between clusters and events")
+
+```
+
+# Initial Cluster 2: 
+## Clustering players based on hit distance and launch speed (to see which players are strong hitters)
+
+```{r cluster players}
+# Summarize batted balls by player name
+
+#mean(table(Batting$player_name)) 
+#average at bats = 17, remove players who've batted less than 5 times 
+
+players <- Batting %>% 
+  group_by(player_name) %>% 
+  filter(n() > 5) %>%  #filter players who've batted more than 5 times
+  summarise_all(.funs = mean, .groups = "drop") #take player averages
+
+filter_players <- players %>% 
+  drop_na(hit_distance_sc, launch_speed) #get rid of rows that have NA's in hit distance and launch speed
+
+
+# Try hierarchical clustering
+#minimax
+
+library(protoclust)
+player_dist <- dist(dplyr::select(filter_players,
+                                  hit_distance_sc, launch_speed))
+player_minimax <- protoclust(player_dist)
+
+# Look at dendrogram
+library(ggdendro)
+ggdendrogram(player_minimax, 
+             theme_dendro = FALSE, 
+             labels = FALSE, 
+             leaf_labels = FALSE) + 
+  labs(y = "Maximum dissimilarity from prototype") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+
+
+minimax_player_clusters <- 
+  protocut(player_minimax, k = 3) #where to cut tree
+
+filter_players %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>%
+  ggplot(aes(x = hit_distance_sc, y = launch_speed,
+             color = player_clusters)) +
+  geom_point(alpha = 0.5) + 
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# View who the prototypes are
+player_prototypes <- filter_players %>%
+  dplyr::select(player_name, hit_distance_sc, launch_speed) %>%
+  slice(minimax_player_clusters$protos)
+
+# Label prototypes on graph 
+filter_players %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>%
+  ggplot(aes(x = hit_distance_sc, y = launch_speed,
+             color = player_clusters)) +
+  geom_point(alpha = 0.5) + 
+  geom_label(data = mutate(player_prototypes, 
+                           player_clusters = 
+                             as.factor(c(1,2,3))), aes(label = player_name)) +
+  ggthemes::scale_color_colorblind() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# View cluster 3
+
+best_batters <- filter_players %>%
+  mutate(player_clusters = 
+           as.factor(minimax_player_clusters$cl)) %>% 
+  filter(player_clusters == 3) %>% 
+  pull(player_name)
+
+data.frame(best_batters) #group of strongest batters this season
+```
+
+
+
+# Discussion
+
+- point out limitations & direction for next steps (future work)
+
+## References
+
+
+
+
+
+
+
+
+
+
