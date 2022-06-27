@@ -64,16 +64,64 @@ In the National Basketball Association (NBA), and more generally in team sports,
 
 Spend time exploring the dataset, to visually assess which of the __explanatory__ variables listed above is most associated with our response the minutes played per game (`min_per_game`). Create scatterplots between the response and each continuous explanatory variable. __Do any of the relationship appear to be linear?__ Describe the direction and strength of the association between the explanatory and response variables.
 
+```{r continuous}
+nba_data_2022 %>% 
+  ggplot(aes(x = field_goal_percentage,
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  theme_bw() +
+  labs(x = "field goal percentage",
+       y = "min per game")
+
+nba_data_2022 %>% 
+  ggplot(aes(x = free_throw_percentage,
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  theme_bw() +
+  labs(x = "free throw percentage",
+       y = "min per game")
+
+nba_data_2022 %>% 
+  ggplot(aes(x = three_point_percentage,
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  theme_bw() +
+  labs(x = "three point percentage",
+       y = "min per game")
+
+nba_data_2022 %>% 
+  ggplot(aes(x = age,
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  theme_bw() +
+  labs(x = "age",
+       y = "min per game")
+
+```
+***Field goal and free throw percentage seems to have a linear relationship with minutes per game; they both have a relatively weak, positive relationship***
+
 In your opinion, __which of the possible continuous explanatory variables displays the strongest relationship with minutes per game__?
 
-Create an appropriate visualization comparing the distribution of minutes per game _by position_. __Do you think there is a relationship between minutes per game and position?__
+***I believe free throw percentage displays the strongest relationship***
+
+Create an appropriate visualization comparing the distribution of minutes per game _by position_. __Do you think there is a relationship between minutes per game and position?__ ***No, I do not think so***
+
+```{r categorical}
+nba_data_2022 %>% 
+  ggplot(aes(x = position,
+             fill = min_per_game)) +
+  geom_bar() +
+  theme_bw() +
+  labs(x = "positions",
+       y = "min per game")
+```
 
 ### 2. __Fit a simple linear model__
 
 Now that you've performed some EDA, it's time to actually fit some linear models to the data. Start the variable you think displays the strongest relationship with the response variable. __Update the following code by replacing INSERT_VARIABLE with your selected variable, and run to fit the model__:
 
 ```{r, eval = FALSE}
-init_nba_lm <- lm(min_per_game ~ INSERT_VARIABLE, data = nba_data_2022)
+init_nba_lm <- lm(min_per_game ~ free_throw_percentage, data = nba_data_2022)
 ```
 
 Before check out the `summary()` of this model, __you need to check the diagnostics__ to see if it meets the necessary assumptions. To do this you can try running `plot(init_nba_lm)` in the console (what happens?). Equivalently, another way to make the same plots but with `ggplot2` perks is with the [`ggfortify`](https://cran.r-project.org/web/packages/ggfortify/vignettes/plot_lm.html) package by running the following code:
@@ -86,23 +134,35 @@ autoplot(init_nba_lm) +
   theme_bw()
 ```
 
-The first plot is __residuals vs. fitted__: this plot should NOT display any clear patterns in the data, no obvious outliers, and be symmetric around the horizontal line at zero. The smooth line provided is just for reference to see how the residual average changes. __Do you see any obvious patterns in your plot for this model?__
+The first plot is __residuals vs. fitted__: this plot should NOT display any clear patterns in the data, no obvious outliers, and be symmetric around the horizontal line at zero. The smooth line provided is just for reference to see how the residual average changes. __Do you see any obvious patterns in your plot for this model?__ ***There are more points clumped towards the right side of the plot but it does not seem to be a substantial pattern***
 
-The second plot is a [Q-Q plot](http://www.stat.cmu.edu/~cshalizi/TALR/TALR.pdf) (p. 93).  Without getting too much into the math behind them, __the closer the observations are to the dashed reference line, the better your model fit is.__  It is bad for the observations to diverge from the dashed line in a systematic way - that means we are violating the assumption of normality discussed in lecture. __How do your points look relative to the dashed reference line?__
+The second plot is a [Q-Q plot](http://www.stat.cmu.edu/~cshalizi/TALR/TALR.pdf) (p. 93).  Without getting too much into the math behind them, __the closer the observations are to the dashed reference line, the better your model fit is.__  It is bad for the observations to diverge from the dashed line in a systematic way - that means we are violating the assumption of normality discussed in lecture. __How do your points look relative to the dashed reference line?__ ***Although the line veers off towards the ends, most of the observations are close to the dashed reference line***
 
-The third plot looks at the square root of the absolute value of the standardized residiuals.  We want to check for homoskedascity of errors (equal, constant variance).  __If we did have constant variance, what would we expect to see?__ __What does your plot look like?__
+The third plot looks at the square root of the absolute value of the standardized residiuals.  We want to check for homoskedascity of errors (equal, constant variance).  __If we did have constant variance, what would we expect to see?__ __What does your plot look like?__ ***If we have constant variance, we would expect to see an equal number of points above and below 0. The plot does a pretty good job at displaying this***
 
 The fourth plot is residuals vs. leverage which helps us identify __influential__ points. __Leverage__ quanitifies the influence the observed response for a particular observation has on its predicted value, i.e. if the leverage is small then the observed response has a small role in the value of its predicted reponse, while a large leverage indicates the observed response plays a large role in the predicted response. Its a value between 0 and 1, where the sum of all leverage values equals the number of coefficients (including the intercept). Specifically the leverage for observation $i$ is computed as:
 
 $$h_{ii} = \frac{1}{n} + \frac{(x_i - \bar{x})^2}{\sum_i^n (x_i - \bar{x})^2}$$
-where $\bar{x}$ is the average value for variable $x$ across all observations. [See page 191 for more details on leverage and the regression hat matrix](http://www.stat.cmu.edu/~cshalizi/TALR/TALR.pdf). We're looking for points in the upper right or lower right corners, where dashed lines for [Cook's distance](https://en.wikipedia.org/wiki/Cook%27s_distance) values would indicate potential outlier points that are displaying too much influence on the model results. __Do you observed any such influential points in upper or lower right corners?__
+where $\bar{x}$ is the average value for variable $x$ across all observations. [See page 191 for more details on leverage and the regression hat matrix](http://www.stat.cmu.edu/~cshalizi/TALR/TALR.pdf). We're looking for points in the upper right or lower right corners, where dashed lines for [Cook's distance](https://en.wikipedia.org/wiki/Cook%27s_distance) values would indicate potential outlier points that are displaying too much influence on the model results. __Do you observed any such influential points in upper or lower right corners?__ ***No, I do not observe such points***
 
-__What is your final assessment of the diagnostics, do you believe all assumptions are met? Any potential outlier observations to remove?__
+__What is your final assessment of the diagnostics, do you believe all assumptions are met? Any potential outlier observations to remove?__ ***I believe all assumptions are reasonably met***
 
 ### 3. __Assess the model summary__
 
 Following the example in lecture, interpret the results from the `summary()` function on your initial model. __Do you think there is sufficient evidence to reject the null hypothesis that the coefficient is 0? What is the interpretation of the $R^2$ value?__
-Compare the square root of the raw (unadjusted) $R^2$ of your linear model to the correlation between that explanatory variable and the response using the `cor()` function (e.g. `cor(nba_data_2022$age, nba_data_2022$min_per_game)` - but replace `age` with your variable). __What do you notice?__
+
+```{r summary}
+summary(init_nba_lm)
+```
+
+***Yes, with a t-value of almost 6, there is sufficient evidence to reject the null. However, the multiple R-squared result indicates that only 7.7% of the variability in minutes per game can be explained by a player's free throw percentage.***
+
+Compare the square root of the raw (unadjusted) $R^2$ of your linear model to the correlation between that explanatory variable and the response using the `cor()` function (e.g. `cor(nba_data_2022$age, nba_data_2022$min_per_game)` - but replace `age` with your variable). __What do you notice?__ ***The correlation of 0.28 reflects the relatively weak, but positive relationship seen through the scatterplot***
+
+```{r correlation}
+cor(nba_data_2022$free_throw_percentage, nba_data_2022$min_per_game)
+```
+
 
 To assess the fit of a linear model, we can also plot the predicted values vs the actual values, to see how closely our predictions align with reality, and to decide whether our model is making any systematic errors. Execute the following code chunk to show the actual minutes per game against our model's predictions
 
@@ -119,18 +179,91 @@ nba_data_2022 %>%
 
 ### 4. __Repeat steps 2 and 3 above for each of the different continuous variables__
 
-Which of the variables do you think is the most appropriate variable for modeling the minutes per game?
+```{r field goal}
+
+init_fg_lm <- lm(min_per_game ~ field_goal_percentage, data = nba_data_2022)
+autoplot(init_fg_lm) +
+  theme_bw()
+summary(init_fg_lm)
+cor(nba_data_2022$field_goal_percentage, nba_data_2022$min_per_game)
+
+nba_data_2022 %>%
+  mutate(init_preds = predict(init_fg_lm)) %>%
+  ggplot(aes(x = init_preds, y = min_per_game)) +
+  geom_point(alpha = 0.75) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", color = "red") +
+  theme_bw() +
+  labs(x = "Predictions", y = "Observed minutes / game")
+
+```
+```{r three point}
+
+init_three_lm <- lm(min_per_game ~ three_point_percentage, data = nba_data_2022)
+autoplot(init_three_lm) +
+  theme_bw()
+summary(init_three_lm)
+cor(nba_data_2022$three_point_percentage, nba_data_2022$min_per_game)
+
+nba_data_2022 %>%
+  mutate(init_preds = predict(init_three_lm)) %>%
+  ggplot(aes(x = init_preds, y = min_per_game)) +
+  geom_point(alpha = 0.75) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", color = "red") +
+  theme_bw() +
+  labs(x = "Predictions", y = "Observed minutes / game")
+
+```
+
+
+```{r age}
+
+init_age_lm <- lm(min_per_game ~ age, data = nba_data_2022)
+autoplot(init_age_lm) +
+  theme_bw()
+summary(init_age_lm)
+cor(nba_data_2022$age, nba_data_2022$min_per_game)
+
+nba_data_2022 %>%
+  mutate(init_preds = predict(init_age_lm)) %>%
+  ggplot(aes(x = init_preds, y = min_per_game)) +
+  geom_point(alpha = 0.75) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", color = "red") +
+  theme_bw() +
+  labs(x = "Predictions", y = "Observed minutes / game")
+
+```
+
+
+Which of the variables do you think is the most appropriate variable for modeling the minutes per game? ***I still think free throw percentage is the most appropriate variable***
 
 ### 5. __Include multiple covariates in your regression__
 
 Repeat steps 2 and 3 above but including more than one variable in your model. You can easily do this in the `lm()` function by adding another variable to the formula with the `+` operator as so (but just replace the `INSERT_VARIABLE_X` parts):
 
 ```{r, eval = FALSE}
-multi_nba_lm <- lm(min_per_game ~ INSERT_VARIABLE_1 + INSERT_VARIABLE_2, 
-                   data = nba_data_2022)
+summary(lm(min_per_game ~ field_goal_percentage + free_throw_percentage, 
+                   data = nba_data_2022))
+summary(lm(min_per_game ~ field_goal_percentage + three_point_percentage, 
+                   data = nba_data_2022))
+summary(lm(min_per_game ~ field_goal_percentage + age, 
+                   data = nba_data_2022))
+summary(lm(min_per_game ~ three_point_percentage + free_throw_percentage, 
+                   data = nba_data_2022))
+summary(lm(min_per_game ~ age + free_throw_percentage, 
+                   data = nba_data_2022))
+summary(lm(min_per_game ~ age + three_point_percentage, 
+                   data = nba_data_2022))
+summary(lm(min_per_game ~ field_goal_percentage + free_throw_percentage + three_point_percentage, 
+                   data = nba_data_2022))
+summary(lm(min_per_game ~ field_goal_percentage + free_throw_percentage + three_point_percentage + age, 
+                   data = nba_data_2022))
+
 ```
 
-__Experiment with different sets of the continuous variables__. What sets of continuous variables do you think model minutes per game best? (Remember to use the __Adjusted $R^2$__ when comparing models that have different numbers of variables).
+__Experiment with different sets of the continuous variables__. What sets of continuous variables do you think model minutes per game best? (Remember to use the __Adjusted $R^2$__ when comparing models that have different numbers of variables). ***I believe field goal percentage, free throw percentage, and three point percentage models minutes per game best***
 
 Beware collinearity! Load the `car` library (install it if necessary!) and use the `vif()` function to check for possible (multi)collinearity. The `vif()` function computes the __variance inflation factor (VIF)__ where for predictor $x_j$ for $j \in 1,\dots, p$:
 
@@ -143,6 +276,8 @@ where $R^2_j$ is the $R^2$ from a variable with variable $x_j$ as the response a
 # First install the package by uncommenting out the following line:
 # install.packages("car")
 library(car)
+multi_nba_lm <- lm(min_per_game ~ field_goal_percentage + free_throw_percentage + three_point_percentage, 
+                   data = nba_data_2022)
 vif(multi_nba_lm)
 ```
 
