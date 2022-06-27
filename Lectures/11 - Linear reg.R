@@ -113,7 +113,7 @@ clean_gapminder %>%
 #if predictions matched our observed data perfectly, they will fall perfectly on the line
 
 clean_gapminder <- 
-  broom::augment(init_lm, clean_gapminder) #using broom package
+  broom::augment(init_lm, clean_gapminder) #using broom package 
 
 clean_gapminder %>%
   ggplot(aes(x = .fitted, 
