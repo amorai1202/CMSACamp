@@ -1,0 +1,154 @@
+---
+title: "Linear Regression Lab 1"
+output: html_document
+---
+
+## Goals
+
+We will briefly review linear modeling, focusing on building and assessing linear models in R. We have four main goals in this lab:
+
++ use exploratory data analysis (EDA) and visualization to determine a) whether two variables have a linear relationship, and b) among a set of explanatory variables, which one(s) seem like the best candidates for predicting a given output variable.
+
++ fit and interpret simple regression models,
+
++ look at diagnostic plots to determine whether a linear model is a good fit for our data,
+
++ assess our fitted linear models.
+
+## Data
+
+Execute the following code chunk to (a) load the necessary data for this lab, (b) compute four variables we will use in this lab, (c) remove players with missing data (just to simplify things), and (d) subset out players with low minute totals (fewer than 250 minutes played in a season):
+
+```{r, eval = FALSE, warning = FALSE, message = FALSE}
+library("tidyverse")
+nba_data_2022 <- read_csv("http://www.stat.cmu.edu/cmsac/sure/2022/materials/data/sports/intro_r/nba_2022_player_stats.csv")
+
+nba_data_2022 <- nba_data_2022 %>%
+  # Summarize player stats across multiple teams they played for:
+  group_by(player) %>%
+  summarize(age = first(age),
+            position = first(position),
+            games = sum(games, na.rm = TRUE),
+            minutes_played = sum(minutes_played, na.rm = TRUE),
+            field_goals = sum(field_goals, na.rm = TRUE),
+            field_goal_attempts = sum(field_goal_attempts, na.rm = TRUE),
+            three_pointers = sum(three_pointers, na.rm = TRUE),
+            three_point_attempts = sum(three_point_attempts, na.rm = TRUE),
+            free_throws = sum(free_throws, na.rm = TRUE),
+            free_throw_attempts = sum(free_throw_attempts, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(field_goal_percentage = field_goals / field_goal_attempts,
+         three_point_percentage = three_pointers / three_point_attempts,
+         free_throw_percentage = free_throws / free_throw_attempts,
+         min_per_game = minutes_played / games) %>%
+  # Remove rows with missing missing values
+  drop_na() %>%
+  filter(minutes_played > 250)
+```
+
+### Which players play the most minutes / game?
+
+In the National Basketball Association (NBA), and more generally in team sports, a coach must make decisions about how many minutes each player should play. Typically, these decisions are informed by a player's skills, along with other factors such as fatigue, matchups, etc. Our goal is to use measurements of a few (quantifiable) player attributes to predict the minutes per game a player plays. In particular, we will focus on the following data, measured over the 2022 NBA regular season for over 400 players:
+
++ `player`: names of each player (not useful for modeling purposes, but just for reference)
++ `min_per_game`: our __response variable__, measuring the minutes per game a player played during the 2022 NBA regular season.
++ `field_goal_percentage`: potential (continuous) __explanatory variable__, calculated as (number of made field goals) / (number of field goals attempted).
++ `free_throw_percentage`: potential (continuous) __explanatory variable__, calculated as (number of made free throws) / (number of free throws attempted).
++ `three_point_percentage`: potential (continuous) __explanatory variable__, calculated as (number of made 3 point shots) / (number of 3 point shots attempted),
++ `age`: potential (continuous / discrete) __explanatory variable__, player's reported age for the 2022 season, 
++ `position`: potential (categorical) explanatory variable, one of `SG` (shooting guard), `PG` (point guard), `C` (center), `PF` (power forward) or `SF` (small forward).
+
+## Exercises
+
+### 1. __EDA__
+
+Spend time exploring the dataset, to visually assess which of the __explanatory__ variables listed above is most associated with our response the minutes played per game (`min_per_game`). Create scatterplots between the response and each continuous explanatory variable. __Do any of the relationship appear to be linear?__ Describe the direction and strength of the association between the explanatory and response variables.
+
+In your opinion, __which of the possible continuous explanatory variables displays the strongest relationship with minutes per game__?
+
+Create an appropriate visualization comparing the distribution of minutes per game _by position_. __Do you think there is a relationship between minutes per game and position?__
+
+### 2. __Fit a simple linear model__
+
+Now that you've performed some EDA, it's time to actually fit some linear models to the data. Start the variable you think displays the strongest relationship with the response variable. __Update the following code by replacing INSERT_VARIABLE with your selected variable, and run to fit the model__:
+
+```{r, eval = FALSE}
+init_nba_lm <- lm(min_per_game ~ INSERT_VARIABLE, data = nba_data_2022)
+```
+
+Before check out the `summary()` of this model, __you need to check the diagnostics__ to see if it meets the necessary assumptions. To do this you can try running `plot(init_nba_lm)` in the console (what happens?). Equivalently, another way to make the same plots but with `ggplot2` perks is with the [`ggfortify`](https://cran.r-project.org/web/packages/ggfortify/vignettes/plot_lm.html) package by running the following code:
+
+```{r, eval = FALSE}
+# First install the package by running the following line (uncomment it!) in the console
+# install.packages("ggfortify")
+library(ggfortify)
+autoplot(init_nba_lm) +
+  theme_bw()
+```
+
+The first plot is __residuals vs. fitted__: this plot should NOT display any clear patterns in the data, no obvious outliers, and be symmetric around the horizontal line at zero. The smooth line provided is just for reference to see how the residual average changes. __Do you see any obvious patterns in your plot for this model?__
+
+The second plot is a [Q-Q plot](http://www.stat.cmu.edu/~cshalizi/TALR/TALR.pdf) (p. 93).  Without getting too much into the math behind them, __the closer the observations are to the dashed reference line, the better your model fit is.__  It is bad for the observations to diverge from the dashed line in a systematic way - that means we are violating the assumption of normality discussed in lecture. __How do your points look relative to the dashed reference line?__
+
+The third plot looks at the square root of the absolute value of the standardized residiuals.  We want to check for homoskedascity of errors (equal, constant variance).  __If we did have constant variance, what would we expect to see?__ __What does your plot look like?__
+
+The fourth plot is residuals vs. leverage which helps us identify __influential__ points. __Leverage__ quanitifies the influence the observed response for a particular observation has on its predicted value, i.e. if the leverage is small then the observed response has a small role in the value of its predicted reponse, while a large leverage indicates the observed response plays a large role in the predicted response. Its a value between 0 and 1, where the sum of all leverage values equals the number of coefficients (including the intercept). Specifically the leverage for observation $i$ is computed as:
+
+$$h_{ii} = \frac{1}{n} + \frac{(x_i - \bar{x})^2}{\sum_i^n (x_i - \bar{x})^2}$$
+where $\bar{x}$ is the average value for variable $x$ across all observations. [See page 191 for more details on leverage and the regression hat matrix](http://www.stat.cmu.edu/~cshalizi/TALR/TALR.pdf). We're looking for points in the upper right or lower right corners, where dashed lines for [Cook's distance](https://en.wikipedia.org/wiki/Cook%27s_distance) values would indicate potential outlier points that are displaying too much influence on the model results. __Do you observed any such influential points in upper or lower right corners?__
+
+__What is your final assessment of the diagnostics, do you believe all assumptions are met? Any potential outlier observations to remove?__
+
+### 3. __Assess the model summary__
+
+Following the example in lecture, interpret the results from the `summary()` function on your initial model. __Do you think there is sufficient evidence to reject the null hypothesis that the coefficient is 0? What is the interpretation of the $R^2$ value?__
+Compare the square root of the raw (unadjusted) $R^2$ of your linear model to the correlation between that explanatory variable and the response using the `cor()` function (e.g. `cor(nba_data_2022$age, nba_data_2022$min_per_game)` - but replace `age` with your variable). __What do you notice?__
+
+To assess the fit of a linear model, we can also plot the predicted values vs the actual values, to see how closely our predictions align with reality, and to decide whether our model is making any systematic errors. Execute the following code chunk to show the actual minutes per game against our model's predictions
+
+```{r, eval = FALSE}
+nba_data_2022 %>%
+  mutate(init_preds = predict(init_nba_lm)) %>%
+  ggplot(aes(x = init_preds, y = min_per_game)) +
+  geom_point(alpha = 0.75) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", color = "red") +
+  theme_bw() +
+  labs(x = "Predictions", y = "Observed minutes / game")
+```
+
+### 4. __Repeat steps 2 and 3 above for each of the different continuous variables__
+
+Which of the variables do you think is the most appropriate variable for modeling the minutes per game?
+
+### 5. __Include multiple covariates in your regression__
+
+Repeat steps 2 and 3 above but including more than one variable in your model. You can easily do this in the `lm()` function by adding another variable to the formula with the `+` operator as so (but just replace the `INSERT_VARIABLE_X` parts):
+
+```{r, eval = FALSE}
+multi_nba_lm <- lm(min_per_game ~ INSERT_VARIABLE_1 + INSERT_VARIABLE_2, 
+                   data = nba_data_2022)
+```
+
+__Experiment with different sets of the continuous variables__. What sets of continuous variables do you think model minutes per game best? (Remember to use the __Adjusted $R^2$__ when comparing models that have different numbers of variables).
+
+Beware collinearity! Load the `car` library (install it if necessary!) and use the `vif()` function to check for possible (multi)collinearity. The `vif()` function computes the __variance inflation factor (VIF)__ where for predictor $x_j$ for $j \in 1,\dots, p$:
+
+$$
+VIF_j = \frac{1}{1 - R^2_j}
+$$
+where $R^2_j$ is the $R^2$ from a variable with variable $x_j$ as the response and the other $p-1$ predictors as the explanatory variables. VIF values close to 1 indicate the variable is not correlated with other predictors, while VIF values over 5 indicate strong presence of collinearity. If present, remove a variable with VIF over 5, and redo the fit. Rinse, lather, and repeat until the `vif()` outputs are all less than 5. The follow code chunk displays an example of using this function:
+
+```{r vif, eval = FALSE}
+# First install the package by uncommenting out the following line:
+# install.packages("car")
+library(car)
+vif(multi_nba_lm)
+```
+
+
+## Tomorrow
+
+Tomorrow's lab will focus on categorical variables, interactions, and holdout data predictions.
+
+

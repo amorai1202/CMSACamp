@@ -785,3 +785,69 @@ data.frame(events = c("Onbase", "Outs", "Homerun"),
 [Back](#next)
 ---
 
+#Script
+
+
+hello all, Jackie and I are very excited to present our project on exploratory data analysis on major league baseball data
+
+——
+
+before diving in, I would like to provide some high level goals that helped guide the process of working on this project.
+
+to start off, we wanted to make sure we really understood the components of baseball statistics, especially myself as i am not as familiar with the intricacies of baseball as jackie is. 
+
+after taking that first initial step, we wanted to explore this mlb batted balls data in order to discover trends, patterns, and answer several questions and hypotheses we were curious about.
+
+and ultimately we hope that this initial eda can guide and inform future models that either predict outcomes or hopefully improve player or team performance
+
+——
+
+we would now like to quickly mention on how we filtered some variables, for instance how we recoded all the events in our dataset, such as double, field-error, etc as either on-base, out, or hr
+
+——
+
+Upon having this data on batted balls, the first question that came to mind was what is the most common way of getting out or more specifically what was the distribution of ways of getting out cuz of course we assumed that field outs had to be most common, but how did that proportion compare to the other ways a player could get out
+
+Our results indicate that indeed field outs are the most common, by a substantial margin, much more than we initially thought, followed by force outs and grounded into double play
+
+——
+
+then we wondered…
+
+In terms of hit location, this was expected, as you can see from the plot that left handed hitters tended to hit more towards first base and right field compared to right-handed batter who hit more towards the left side of the field. This plot also contains pitch type but jackie will get into that in more depth later on
+
+——
+
+Our next question was …
+
+looking solely the proportions of left-handed and right-handed batters among their respective groups, we 
+see from this barplot that 1. 2. 3. And although this difference seems pretty small, t-tests indicate that all three differences are significant at an alpha level of 0.5
+the actual pvalues are in our appendix if you are interested in that later
+
+——
+
+hit distance: distance of the batted ball in feet
+launch speed: exit velocity of the ball off the bat (mph)
+
+k means as it best used for more circular looking patterns and looking at our elbow plot on the left, we decided on 3 clusters.
+
+If I could direct your attention to the right, we see that
+short distance slow launch speed is a cluster, short distance, high launch speed, and further distance and high launch speed
+
+this clustering was pretty trivial and not as informative as we had hoped since it just groups of batted balls 
+
+—-
+
+therefore, this led us to clustering players instead on batted balls
+
+because we ultimately wanted a prototype observation or representative player in each cluster to make communicating results easier, we used the minimax linkage function and cut the dendrogram on the left to create 3 clusters or the 3 groups of players you see on the plot on the right
+
+—
+
+this graph displays the prototypes or players that are represent the 3 clusters, as sean murphy represents the players so far who have batted balls furthest with the fastest launch speed so far this season
+
+I should note that we took out players who had less than 5 at bats this season, as the average at bats per player was around 17
+—
+
+and this table lists all of the players that are part of that third cluster, which we are categorizing as the strongest batters this season
+

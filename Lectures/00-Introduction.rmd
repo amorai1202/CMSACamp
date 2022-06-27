@@ -1,0 +1,257 @@
+---
+title: "Welcome to SURE"
+subtitle: "Background and overview"
+date: "June 6th, 2022"
+---
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(xaringanthemer)
+style_mono_accent(base_color = "#cc002b")
+```
+
+## Meet the instructors
+
+```{r, echo = FALSE, out.width = '85%', fig.align='center'}
+knitr::include_graphics("https://media1.tenor.com/images/e04caa040893f7d3fc11c24f6fab2de4/tenor.gif?itemid=8079093") 
+```
+
+---
+
+## Meet the instructors
+
+
+
+.pull-left[
+- Instructor: __Professor Ron Yurko__ ([@Stat_Ron](https://twitter.com/Stat_Ron))
+  
+  - [@CMU_Stats](https://twitter.com/CMU_Stats) PhD '22, BS '15 
+  
+  - Incoming Assistant Teaching Professor
+  
+  - Industry experience: Pittsburgh Pirates '14, finance '16-'17, [Zelus Analytics](https://zelusanalytics.com/) '21-'22
+  
+  - Research: statistical genetics, selective inference, clustering, and statistics in sports / sports analytics
+  
+  - Star Wars, Marvel, and Pittsburgh sports fan
+]
+
+.pull-right[
+
+Teaching Assistants!
+
+  - [Nick Kissel](mailto:nkissel@andrew.cmu.edu)
+  
+  - [Wanshan Li](mailto:wanshanl@andrew.cmu.edu)
+  
+  - [Meg Ellingwood](mailto:mellingw@andrew.cmu.edu)
+  
+  - [Kenta Takatsu](mailto:ktakatsu@andrew.cmu.edu)
+  
+  - [YJ Choe](mailto:yjchoe@cmu.edu)
+
+]
+
+
+---
+
+## Statistics in sports research?
+
+You might think statistics in sports or sports analytics research is relatively new...
+
+--
+
+.pull-left[
+
+
+Professors [Brad Efron](http://statweb.stanford.edu/~ckirby/brad/) and [Carl Morris](https://statistics.fas.harvard.edu/people/carl-n-morris) disagree
+
+- "Data analysis using Stein's estimator and its generalizations"
+
+- _Journal of the American Statistical Association_ (__1975__)
+
+- Introduction of __Empirical Bayes__ to sports
+
+  - Improve accuracy by pooling information from other players
+
+]
+.pull-right[
+
+.center[![](http://www.stat.cmu.edu/cmsac/sure/materials/img/stein-baseball1.png)]
+
+
+]
+
+
+---
+
+## Everything __starts with the data__
+
+.center[![](https://d3i71xaburhd42.cloudfront.net/e64e2935a7d2565f8d29250fec9f039ed0767cde/4-Figure1-1.png)]
+
+Cervone et al. ["A multiresolution stochastic process model for predicting basketball possession outcomes."](https://arxiv.org/pdf/1408.0777.pdf) _Journal of the American Statistical Association_ (2016)
+
+---
+
+## Everything __starts with the data__
+
+.center[![](https://d3i71xaburhd42.cloudfront.net/e64e2935a7d2565f8d29250fec9f039ed0767cde/5-Figure2-1.png)]
+
+Cervone et al. ["A multiresolution stochastic process model for predicting basketball possession outcomes."](https://arxiv.org/pdf/1408.0777.pdf) _Journal of the American Statistical Association_ (2016)
+
+---
+
+## NFL Big Data Bowl tracking data example
+
+```{r, echo = FALSE, out.width = '150%', fig.align='center'}
+knitr::include_graphics("http://www.stat.cmu.edu/cmsac/sure/materials/img/rfcde_gif_td_run_update.gif") 
+
+```
+
+Yurko et al. ["Going deep: models for continuous-time within-play valuation of game outcomes in American football with tracking data."](https://arxiv.org/pdf/1906.01760.pdf) _Journal of Quantitative Analysis in Sports_ (2020)
+
+---
+
+## [CMU Delphi COVIDcast](https://delphi.cmu.edu/covidcast/)
+
+```{r, echo = FALSE, out.width = '70%', fig.align='center'}
+knitr::include_graphics("https://cmu-delphi.github.io/covidcast/covidcastR/articles/plotting-signals_files/figure-html/unnamed-chunk-5-1.png") 
+```
+
+
+---
+
+### General outline and key dates (subject to change, all times in EST)
+
+__Lectures__: Monday to Friday, 10:30 AM to 12 PM 
+
+  - Prof Yurko's office hours are Monday and Wednesdays 3:30 to 5:00 PM in 132D
+
+__Labs__:  Monday to Thursday, 1:30 to 3 PM (sports in 232M and health in 129A)
+
+  - Will begin with mini projects & practice presentations before shift to focus on main projects
+
+--
+
+.pull-left[
+- First two weeks, June 6-17:
+  - EDA, data visualization, 
+  - Clustering
+  
+- June 21-30:
+  - Linear models, model assessment, regularization
+  - Splines, GAMs, and PCA
+
+]
+
+--
+
+.pull-right[
+- July 6 - July 15:
+  - GLMs
+  - Tree-based models
+  - Labs will shift focus to main projects
+
+- July 18 - 29:
+  - Special topics (e.g., survival analysis)
+  - Focus on projects!
+
+Plus many guest speakers (__check your email!__)
+]
+
+
+
+---
+
+## Goals for the summer
+
+
+.pull-left[
+- Develop fundamentals research skills: data wrangling, visualization, modeling, communication
+
+  - Become familiar with `R`, `tidyverse`, `ggplot2`, `markdown`, GitHub
+
+- Complete statistical learning bootcamp
+
+- Create a portfolio of projects with GitHub and practice reproducible research
+
+  - __All presentations will be made using `R` Markdown with [xaringan](https://bookdown.org/yihui/rmarkdown/xaringan.html)!__ 
+  
+- Network with academic researchers and industry professionals
+
+  - Optum speaker series, Wednesdays at 12 PM
+]
+
+--
+
+.pull-right[
+
+__Ask questions, learn, and grow__
+
+.center[![](https://64.media.tumblr.com/371362eb43f19000b1d1fdac168fb1e6/tumblr_pklrbnneCh1uhh267o4_540.gifv)]
+
+Sports Academic Advisor: Glenn Clune ([gclune@andrew.cmu.edu](mailto:gclune@andrew.cmu.edu))
+
+Health Academic Advisor: Amanda Mitchell ([ajmitche@andrew.cmu.edu](mailto:ajmitche@andrew.cmu.edu))
+
+]
+
+
+
+
+---
+
+## Resources to remember!
+
+- Program website: [http://www.stat.cmu.edu/cmsac/sure/2022/materials/](http://www.stat.cmu.edu/cmsac/sure/2022/materials/)
+
+- Check out the [References](http://stat.cmu.edu/cmsac/sure/2022/materials/references.html) tab for links to online textbooks and other useful references
+
+- [Data Sources](http://stat.cmu.edu/cmsac/sure/2022/materials/data_sources.html) tab for links to various public datasets
+
+- We will also use slack to communicate, share interesting articles and materials throughout the summer
+  - See previous email with the workspace invitation link 
+  
+--
+
+.center[![](https://thumbs.gfycat.com/WelcomeMeekGrackle-max-1mb.gif)]
+
+
+---
+
+## SURE alumni
+
+.pull-left[
+
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Getting to work in the NHL has been a dream come true💛🖤! Super excited to continue working with Sam, Nick, and others in the Penguins organizations moving forward! <a href="https://twitter.com/hashtag/LetsGoPens?src=hash&amp;ref_src=twsrc%5Etfw">#LetsGoPens</a> <a href="https://t.co/h509BMkgOn">https://t.co/h509BMkgOn</a></p>&mdash; Katerina Wu (@kattaqueue) <a href="https://twitter.com/kattaqueue/status/1369366870009208833?ref_src=twsrc%5Etfw">March 9, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+]
+
+.pull-right[
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Happy and humbled to announce that I&#39;ll be returning to the one and only <a href="https://twitter.com/CMU_Stats?ref_src=twsrc%5Etfw">@CMU_Stats</a> as a PhD student this fall!<br>See you in Pittsburgh!</p>&mdash; Thea Sukianto (@stats_sukianto) <a href="https://twitter.com/stats_sukianto/status/1373010973733257217?ref_src=twsrc%5Etfw">March 19, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+]
+
+---
+
+## SURE alumni
+
+.pull-left[
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Super excited and honored to be chosen as one of the winners of this year&#39;s <a href="https://twitter.com/hashtag/BigDataBowl?src=hash&amp;ref_src=twsrc%5Etfw">#BigDataBowl</a>! Big shoutouts to <a href="https://twitter.com/sarahrunbailey?ref_src=twsrc%5Etfw">@sarahrunbailey</a> for being a fantastic mentor and <a href="https://twitter.com/StatsbyLopez?ref_src=twsrc%5Etfw">@StatsbyLopez</a> and crew for putting this amazing competition together! <a href="https://t.co/Z5VSq6xpwJ">https://t.co/Z5VSq6xpwJ</a></p>&mdash; Jill Reiner (@jillhreiner) <a href="https://twitter.com/jillhreiner/status/1357732578309009411?ref_src=twsrc%5Etfw">February 5, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+]
+
+.pull-right[
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Thank you <a href="https://twitter.com/SloanSportsConf?ref_src=twsrc%5Etfw">@SloanSportsConf</a> for an outstanding conference. <a href="https://twitter.com/j_bosch10?ref_src=twsrc%5Etfw">@j_bosch10</a> <a href="https://t.co/3ekyk0wvHC">https://t.co/3ekyk0wvHC</a></p>&mdash; Sam Kalman (@sam_kalman_) <a href="https://twitter.com/sam_kalman_/status/1236435614452592643?ref_src=twsrc%5Etfw">March 7, 2020</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+]
+
+
+---
+
+class: center, middle
+
+# And now it's your turn...
+
+--
+
+# (but we're here to help!)
+
+
+
