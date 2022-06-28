@@ -1,0 +1,405 @@
+---
+title: "Linear Regression Lab 2"
+output: html_document
+---
+
+## Goals
+
+Today, we will go over some ways to transform variables and increase flexibility / explanatory power of a model, and a paradigm -- training/testing -- for avoiding overfitting.
+
+
+## Data
+
+Execute the following code chunk to (a) load the necessary data for this lab, (b) compute four variables we will use in this lab, (c) remove players with missing data (just to simplify things), and (d) subset out players with low minute totals (fewer than 250 minutes played in a season):
+
+```{r, eval = FALSE, warning = FALSE, message = FALSE}
+library("tidyverse")
+nba_data_2022 <- read_csv("http://www.stat.cmu.edu/cmsac/sure/2022/materials/data/sports/intro_r/nba_2022_player_stats.csv")
+
+nba_data_2022 <- nba_data_2022 %>%
+  # Summarize player stats across multiple teams they played for:
+  group_by(player) %>%
+  summarize(age = first(age),
+            position = first(position),
+            games = sum(games, na.rm = TRUE),
+            minutes_played = sum(minutes_played, na.rm = TRUE),
+            field_goals = sum(field_goals, na.rm = TRUE),
+            field_goal_attempts = sum(field_goal_attempts, na.rm = TRUE),
+            three_pointers = sum(three_pointers, na.rm = TRUE),
+            three_point_attempts = sum(three_point_attempts, na.rm = TRUE),
+            free_throws = sum(free_throws, na.rm = TRUE),
+            free_throw_attempts = sum(free_throw_attempts, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(field_goal_percentage = field_goals / field_goal_attempts,
+         three_point_percentage = three_pointers / three_point_attempts,
+         free_throw_percentage = free_throws / free_throw_attempts,
+         min_per_game = minutes_played / games) %>%
+  # Remove rows with missing missing values
+  drop_na() %>%
+  filter(minutes_played > 250)
+```
+
+
+### Which players play the most minutes / game?
+
+To review from yesterday's lab: in the National Basketball Association (NBA), and more generally in team sports, a coach must make decisions about how many minutes each player should play. Typically, these decisions are informed by a player's skills, along with other factors such as fatigue, matchups, etc. Our goal is to use measurements of a few (quantifiable) player attributes to predict the minutes per game a player plays. In particular, we will focus on the following data, measured over the 2022 NBA regular season for 386 total players:
+
++ `player`: names of each player (not useful for modeling purposes, but just for reference)
++ `min_per_game`: our __response variable__, measuring the minutes per game a player played during the 2022 NBA regular season.
++ `field_goal_percentage`: potential (continuous) __explanatory variable__, calculated as (number of made field goals) / (number of field goals attempted).
++ `free_throw_percentage`: potential (continuous) __explanatory variable__, calculated as (number of made free throws) / (number of free throws attempted).
++ `three_point_percentage`: potential (continuous) __explanatory variable__, calculated as (number of made 3 point shots) / (number of 3 point shots attempted),
++ `age`: potential (continuous / discrete) __explanatory variable__, player's reported age for the 2022 season, 
++ `position`: potential (categorical) explanatory variable, one of `SG` (shooting guard), `PG` (point guard), `C` (center), `PF` (power forward) or `SF` (small forward).
+
+## Exercises
+
+### 1. Linear model with one categorical variable
+
+Run the following code to fit a model using only the `position` variable:
+
+```{r, eval = FALSE}
+pos_nba_lm <- lm(min_per_game ~ position, data = nba_data_2022)
+```
+
+Next, use the following code to first create a column called `pos_preds` containing the predictions of the model above, to display the predictions of this model against the actual observed minutes / game, but `facet` by the player's position:
+
+```{r, eval = FALSE}
+nba_data_2022 %>%
+  mutate(pos_preds = predict(pos_nba_lm)) %>%
+  ggplot(aes(x = min_per_game, y = pos_preds)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~ position, ncol = 3) +
+  theme_bw() +
+  labs(x = "Actual minutes / game", 
+       y = "Predicted minutes / game")
+```
+
+As the figure above, categorical variables make it __so we are changing the intercept of our regression line__. To make this more clear, view the output of the summary:
+
+```{r, eval = FALSE}
+summary(pos_nba_lm)
+```
+
+__Notice how only four coefficients are provided in addition to the intercept.__ This is because, by default, `R` turns the categorical variables of $m$ levels (e.g. we have 5 positions in this dataset) into $m - 1$ indicator variables (binary with values of 1 if in that level versus 0 if not that level) for different categories relative to a __baseline level__. In this example, `R` has created an indicator for four positions: PF, PG, SF, and SG. By default, `R` will use alphabetical order to determine the baseline category, which in this example the center position C.  The values for the coefficient estimates (such as 2.11 for PF) indicate the expected change in the response variable relative to the baseline. In other words, __the intercept term gives us the baseline's average y__, e.g. the average minutes / game for centers. This matches what you displayed in the predictions against observed minutes / game scatterplots by position above. 
+
+__Beware the default baseline `R` picks for categorical variables!__ We typically want to choose the baseline level to be the group __with the most observations__. In this example, each position has a similar number of observations so the results are reasonable. But in general, we can change the reference level by modifying the `factor` levels of the categorical variables (similar to how we reorder things in `ggplot2`). For example, after viewing `table(nba_data_2022$position)` we see how the SG position has the most observations. We can use the following code to modify the position variable so that SG is the baseline (we use `fct_relevel()` to update `position` so that SG is the first factor level - and we do not need to modify the order of the remaining levels):
+
+```{r}
+table(nba_data_2022$position) #pick category with the most observations
+```
+
+
+```{r, eval = FALSE}
+nba_data_2022 <- nba_data_2022 %>%
+  mutate(position = fct_relevel(position, "SG")) 
+```
+
+__Refit the linear regression model using `position` above, how has the summary changed?__ 
+
+```{r}
+summary(lm(min_per_game ~ position, data = nba_data_2022))
+```
+***The coefficients now include all positions except for SG, as SG is now the intercept.***
+
+### 2. Linear model with one categorical AND one continuous variable
+
+Pick a single continuous variable from yesterday, use it to replace INSERT_VARIABLE below, then run the code to fit a model with the `position` included:
+
+```{r, eval = FALSE}
+x_pos_nba_lm <- lm(min_per_game ~ position + free_throw_percentage, data = nba_data_2022)
+```
+
+__Create scatterplots with your predictions on the y-axis, your INSERT_VARIABLE on the x-asis, and color by position__. What do you observe? ***Our predictions are quite accurate***
+
+```{r scatterplot}
+
+nba_data_2022 %>%
+  mutate(pos_preds = predict(x_pos_nba_lm)) %>%
+  ggplot(aes(x = free_throw_percentage, 
+             color = position)) +
+  geom_point(aes(y = pos_preds),
+             alpha = 0.5) +
+  theme_bw() 
+
+```
+
+
+Given similarities between different types of positions, we can easily collapse the positions together into a smaller number of categories using `fct_collapse()`:
+
+```{r eval = FALSE}
+nba_data_2022 <- nba_data_2022 %>%
+  mutate(position_group = fct_collapse(position,
+                                       Guard = c("SG", "PG"),
+                                       Forward = c("SF", "PF"),
+                                       Center = "C")) 
+```
+
+__Refit the model with this new `position_group` variable__, but assign it to a different name, e.g. `x_pos_group_nba_lm`. What changed in the summary? ***There are only 2 categorical variables now, "center" and "forward", as "guard" is represented by the intercept***
+
+```{r new position_group variable}
+
+x_pos_group_nba_lm <- lm(min_per_game ~ position_group + free_throw_percentage, data = nba_data_2022)
+summary(x_pos_group_nba_lm)
+
+```
+
+
+### 3. Interactions
+
+Remember with `ggplot2` you can directly compute and plot the results from running linear regression using `geom_smooth()` or `stat_smooth()` and specifying that `method = "lm"`. Try running the following code (replace INSERT_VARIABLE!) to generate the linear regression fits with `geom_smooth` versus your own model's predictions (note the different `y` mapping for the point versus smooth layers):
+
+```{r eval = FALSE}
+nba_data_2022 %>%
+  mutate(pos_preds = predict(x_pos_nba_lm)) %>%
+  ggplot(aes(x = free_throw_percentage, 
+             color = position)) +
+  geom_point(aes(y = pos_preds),
+             alpha = 0.5) +
+  theme_bw() +
+  facet_wrap(~ position, ncol = 3) +
+  labs(x = "Free throw percentage", 
+       y = "Predicted minutes / game") +
+  geom_smooth(aes(y = min_per_game),
+              method = "lm") 
+```
+
+__The `geom_smooth()` regression lines do NOT match!__ This is because `ggplot2` is fitting __separate regressions for each position__, meaning the slope for the continuous variable on the x-axis is changing for each position. We can match the output of the `geom_smooth()` results with __interactions__. We can use interaction terms to build more complex models. Interaction terms allow for a different linear model to be fit for each category; that is, they allow for different slopes across different categories. If we believe relationships between continuous variables, and outcomes, differ across categories, we can use interaction terms to better model these relationships.
+
+To fit a model with an interaction term between two variables, include the interaction via the `*` operator like so:
+```{r eval = FALSE}
+pos_int_nba_lm <- lm(min_per_game ~ position + free_throw_percentage +
+                       position * free_throw_percentage, 
+                   data = nba_data_2022)
+```
+
+__Replace the predictions in the previous plot's `mutate` code with this interaction model's predictions.__ How do they compare to the results from `geom_smooth()` now? ***The predictions now match up with the geom_smooth line***
+
+```{r}
+nba_data_2022 %>%
+  mutate(pos_preds = predict(pos_int_nba_lm)) %>%
+  ggplot(aes(x = free_throw_percentage, 
+             color = position)) +
+  geom_point(aes(y = pos_preds),
+             alpha = 0.5) +
+  theme_bw() +
+  facet_wrap(~ position, ncol = 3) +
+  labs(x = "Free throw percentage", 
+       y = "Predicted minutes / game") +
+  geom_smooth(aes(y = min_per_game),
+              method = "lm") 
+```
+
+
+You can model interactions between any type of variables using the `*` operator, feel free to experiment on your different possible continuous variables.
+
+### 4. Polynomials
+
+Another way to increase the explanatory power of your model is to include transformations of continuous variables. For instance you can directly create a column that is a square of a variable with `mutate()` and then fit the regression with the original variable and its squared term:
+
+```{r eval = FALSE}
+nba_data_2022 <- nba_data_2022 %>%
+  mutate(fg_perc_squared = field_goal_percentage^2)
+squared_fg_lm <- lm(min_per_game ~ field_goal_percentage + fg_perc_squared, 
+                    data = nba_data_2022)
+summary(squared_fg_lm)
+```
+
+__What are some difficulties with interpreting this model fit?__ View the predictions for this model or other covariates you squared. ***Field goal percentage squared is easily understandable in the basketball sense and the predictions do not match very well with the observed data***
+
+```{r}
+nba_data_2022 %>%
+  mutate(pos_preds = predict(squared_fg_lm)) %>%
+  ggplot(aes(x = pos_preds, 
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, #add reference line (perfect diagonal line)
+              linetype = "dashed",
+              color = "red",
+              size = 2) +
+  theme_bw()
+```
+
+
+The `poly()` function allows us to build higher-order polynomial transformations of variables easily. Run the following code chunk to fit a 9th-order polynomial model (i.e. $Y = \beta_0 + \beta_1x + \beta_2x^2 + \ldots + \beta_9x^9$) between minutes / game and field goal percentage. 
+
+```{r eval = FALSE}
+poly_nine_fg_lm <- lm(min_per_game ~ poly(field_goal_percentage, 9), 
+                      data = nba_data_2022)
+summary(poly_nine_fg_lm)
+```
+
+__Do you think this is appropriate, how did this change your predictions compared to the previous plot or when only using the variable without any transformation?__ ***I do not think this is appropriate as the predictions are even worse compared to the previous plot and the plot with no transformation. 
+
+```{r}
+nba_data_2022 %>%
+  mutate(pos_preds = predict(poly_nine_fg_lm)) %>%
+  ggplot(aes(x = pos_preds, 
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, #add reference line (perfect diagonal line)
+              linetype = "dashed",
+              color = "red",
+              size = 2) +
+  theme_bw()
+```
+
+
+### 5. Training and testing
+
+As we've seen, using transformations such as higher-order polynomials may decrease the interpretability and increase the potential for overfitting associated with our models; however, they can also dramatically improve the explanatory power.
+
+We need a way for making sure our more complicated models have not overly fit to the noise present in our data. Another way of saying this is that a good model should generalize to a different sample than the one on which it was fit. This intuition motivates the idea of training/testing. We split our data into two parts, use one part -- the training set -- to fit our models, and the other part -- the testing set -- to evaluate our models. Any model which happens to fit to the noise present in our training data should perform poorly on our testing data.  
+
+The first thing we will need to do is split our sample. Run the following code chunk to divide our data into two halves, which we will refer to as a training set and a test set. Briefly summarize what each line in the code chunk is doing.
+
+```{r, eval = FALSE}
+set.seed(100)
+n_players <- nrow(nba_data_2022) #count number of rows (players) in the dataset
+train_i <- sample(n_players, n_players / 2, replace = FALSE) #randomly sample 1/2 of the total num of players (replace = FALSE makes sure no player is sampled more than once) and assign those players to the training set
+test_i <- (1:n_players)[-train_i] #subset all the players who are not in the training set and assign them to the test set
+nba_train_22 <- nba_data_2022[train_i,] #grab all columns associated with the players part of the training set
+nba_test_22 <- nba_data_2022[test_i,] #grab all columns associated with the players part of the test set
+```
+
+We will now compare three candidate models for predicting minutes played using position and field goal percentage. We will fit these models on the **training data** only, ignoring the testing data for the moment. Run the below two code chunks to create two candidate models:
+
+```{r eval = FALSE}
+candidate_model_1 <- lm(min_per_game ~ poly(field_goal_percentage, 2) + position +
+                          position * poly(field_goal_percentage, 2), 
+                        data = nba_train)
+```
+
+```{r eval = FALSE}
+candidate_model_2 <- lm(min_per_game ~ poly(field_goal_percentage, 2) + position, 
+                        data = nba_train)
+```
+
+Using `summary()`, which of these models has more explanatory power according to the training data? Which of the models is less likely to overfit? ***Model 1 has more explanatory power but it is also more likely to overfit***
+
+```{r}
+summary(candidate_model_1)
+summary(candidate_model_2)
+```
+
+
+__Fit another model to predict minutes / game using a different set of variables / polynomials__. 
+
+Now that we've built our candidate models, we will evaluate them on our test set, using the criterion of mean squared error (MSE). Run the following code chunk to compute, on the test set, the MSE of predictions given by the first model compared to the actual minutes played.
+
+```{r eval = FALSE}
+model_1_preds <- predict(candidate_model_1, newdata = nba_test)
+model_1_mse <- mean((model_1_preds - nba_test$min_per_game)^2)
+
+model_2_preds <- predict(candidate_model_2, newdata = nba_test)
+model_2_mse <- mean((model_2_preds - nba_test$min_per_game)^2)
+
+model_1_mse
+model_2_mse
+
+```
+
+__Do this for each of your candidate models__. Compare the MSE on the test set, which model performed best (lowest test MSE)? ***Model 2 performed best***
+
+### Bonus
+
+You can load the same type of data from the 2021 season using the following code:
+
+```{r init_data-2, warning = FALSE, message = FALSE}
+nba_data_2021 <- read_csv("http://www.stat.cmu.edu/cmsac/sure/2021/materials/data/intro_r/nba_2021_player_stats.csv")
+```
+
+Repeat the same steps for creating the variables and filtering players from the code for initializing the 2022 data. __Repeat your steps of training models but do so on the 2021 data__. Assess the performance of your models using only the 2021 data, using the sampling approach above to generate holdout test data. After finding the model that predicts best on test data __just within 2021__, then refit the model using all of the 2021 data. Do this for each of your other candidate models. __Then generate the predictions for these models on the 2022 data__. Did the model that you picked to be the best on 2021 test data then win again on the 2022 holdout data?
+
+
+```{r filter data}
+nba_data_2021 <- nba_data_2021 %>%
+  group_by(player) %>%
+  summarize(age = first(age),
+            position = first(position),
+            games = sum(games, na.rm = TRUE),
+            minutes_played = sum(minutes_played, na.rm = TRUE),
+            field_goals = sum(field_goals, na.rm = TRUE),
+            field_goal_attempts = sum(field_goal_attempts, na.rm = TRUE),
+            three_pointers = sum(three_pointers, na.rm = TRUE),
+            three_point_attempts = sum(three_point_attempts, na.rm = TRUE),
+            free_throws = sum(free_throws, na.rm = TRUE),
+            free_throw_attempts = sum(free_throw_attempts, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(field_goal_percentage = field_goals / field_goal_attempts,
+         three_point_percentage = three_pointers / three_point_attempts,
+         free_throw_percentage = free_throws / free_throw_attempts,
+         min_per_game = minutes_played / games) %>%
+  drop_na() %>% # remove rows with missing values
+  filter(minutes_played > 250) 
+```
+
+```{r scatterplots}
+nba_data_2021 %>% 
+  ggplot(aes(x = field_goal_percentage,
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  theme_bw() +
+  labs(x = "field goal percentage",
+       y = "min per game")
+
+nba_data_2021 %>% 
+  ggplot(aes(x = free_throw_percentage,
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  theme_bw() +
+  labs(x = "free throw percentage",
+       y = "min per game")
+
+nba_data_2021 %>% 
+  ggplot(aes(x = three_point_percentage,
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  theme_bw() +
+  labs(x = "three point percentage",
+       y = "min per game")
+
+nba_data_2021 %>% 
+  ggplot(aes(x = age,
+             y = min_per_game)) +
+  geom_point(alpha = 0.5) +
+  theme_bw() +
+  labs(x = "age",
+       y = "min per game")
+
+
+```
+
+```{r split data}
+
+n_players <- nrow(nba_data_2021) 
+train_i <- sample(n_players, n_players / 2, replace = FALSE) 
+test_i <- (1:n_players)[-train_i] 
+nba_train <- nba_data_2021[train_i,] 
+nba_test <- nba_data_2021[test_i,]
+
+```
+
+```{r training models}
+
+candidate_model_1 <- lm(min_per_game ~ poly(field_goal_percentage, 2) + position +
+                          position * poly(field_goal_percentage, 2), 
+                        data = nba_data_2021)
+candidate_model_2 <- lm(min_per_game ~ poly(field_goal_percentage, 2) + position, 
+                        data = nba_data_2021)
+
+```
+
+```{r test model}
+
+model_preds_1 <- predict(candidate_model_1, newdata = nba_data_2022)
+model_mse_1 <- mean((model_preds_1 - nba_data_2022$min_per_game)^2)
+model_preds <- predict(candidate_model_2, newdata = nba_data_2022)
+model_mse <- mean((model_preds - nba_data_2022$min_per_game)^2)
+model_mse_1
+model_mse
+
+
+```
+
+
