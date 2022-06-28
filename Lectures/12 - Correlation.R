@@ -14,6 +14,7 @@ nfl_teams_data <- nfl_teams_data %>%
 
 hist(nfl_teams_data$score_diff)
 
+#Correlation plot
 library(ggcorrplot)
 nfl_model_data <- nfl_teams_data %>%
   dplyr::select(score_diff, offense_ave_epa_pass,
@@ -34,10 +35,13 @@ ex_cor_matrix <- cor(nfl_ex_vars)
 cor_dist_matrix <- 1 - abs(ex_cor_matrix)
 cor_dist_matrix <- as.dist(cor_dist_matrix)
 
+#Clustering variables using correlation matrix
 nfl_ex_hc <- hclust(cor_dist_matrix, "complete")
 library(ggdendro)
 ggdendrogram(nfl_ex_hc, rotate = TRUE, size = 2) #close together = correlated
 
+
+#Pairs plot of multiple variables
 library(GGally)
 ggpairs(nfl_model_data,
         columns = c("score_diff", "offense_ave_epa_run",
