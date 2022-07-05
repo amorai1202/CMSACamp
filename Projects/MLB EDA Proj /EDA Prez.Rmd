@@ -84,50 +84,6 @@ Batting %>%
 ```
 
 ---
-# Background
-### Methods:
-.pull-left[
-a. **Events re-coded as "On-Base", "Out", or "Homerun"**
-```{r eval=FALSE}
-mutate(events = 
-    fct_recode(events, 
-    "On-base" = "double", 
-    "On-base" = "field_error",
-    "Out" = "double_play",
-    "Out" = "field_out",
-    "On-base" = "fielders_choice",
-    "Out" = "fielders_choice_out",
-    "Homerun" = "home_run"
-    ...
-```
-
-       
-]
-
-.pull-right[
-
-b. **Pitch Types re-coded as "Fastball", "Change-up", and "Breaking Ball"**
-
-```{r eval=FALSE}
-mutate(pitch_type =
-    fct_recode(pitch_type, 
-               "Changeup" = "CH", 
-               "Breaking ball" = "CU",
-               "Changeup" = "EP",
-               "Fastball" = "FA",
-               "Fastball" = "FC", 
-               "Fastball" = "FF", 
-               "Fastball" = "FS",
-               "Breaking ball" = "KC",  
-               "Fastball" = "SI",  
-               "Breaking ball" = "SL"))
-```
-
-
-]
-
-
----
 
 # Field outs are the most common 
 
@@ -157,7 +113,7 @@ Batting_outs %>%
   ggplot(aes(x = events)) +
   geom_bar(fill= "#238A8DFF") +
   coord_flip() +
-  labs(y= "count", x = "Type of outs") +
+  labs(y= "Frequency", x = "Type of outs") +
   ggthemes::scale_color_colorblind() +
   theme(axis.text = element_text(angle = 90)) +
   theme_bw()
@@ -191,14 +147,37 @@ edit_pitch <- Batting %>%
                                  "Fastball" = "SI",  
                                  "Breaking ball" = "SL"))
 
+# Graph using scatterplot:
+# edit_pitch %>% 
+#   ggplot(aes(x = hc_x, y = (hc_y * -1))) +
+#   geom_point(alpha = 0.3) +
+#   labs(x = "horizontal coordinate",
+#        y = "vertical coordinate") +
+#   facet_wrap(~ stand) +
+#   theme_bw()
+
+
+#Change facet titles
+stand.labs <- c("Left-Handed", "Right-Handed")
+names(stand.labs) <- c("L", "R")
+
+#Graph using hexagonal binning:
+
+library(hexbin)
 edit_pitch %>% 
-  ggplot(aes(x = hc_x, y = (hc_y * -1), color = pitch_type)) +
-  geom_point(alpha = 0.3) +
+  ggplot(aes(x = hc_x, y = (hc_y * -1))) +
+  geom_hex(binwidth = c(5, 5)) +
+  scale_fill_gradient(low = "darkblue", 
+                      high = "darkorange") + 
+  coord_fixed() +
   labs(x = "horizontal coordinate",
-       y = "vertical coordinate",
-       color = "Pitch Type") +
-  facet_wrap(~ stand) +
+       y = "vertical coordinate") +
+  facet_wrap(~ stand, labeller = labeller(stand = stand.labs)
+  ) +
+  theme(legend.position = "bottom") +
   theme_bw()
+
+
 
 ```
 
@@ -246,10 +225,9 @@ prop_Batting %>%
   ggplot(aes(x = events, y = prop, fill = hand)) +
   geom_col(position = "dodge") +
   theme_bw() +
-  labs(y= "Proportion", x = "Events")
+  labs(y= "Proportion", x = "Events", caption = "All events in the dataset categorized as either on-base, out, or homerun events")
 
 #title = "Distribution of Events Based on Batting Left-handed vs Right-handed"
-#YES, at alpha level 0.05, we have sufficient evidence to reject the null hypothesis that the proportion of on-base, outs, and home-runs between left and right-handed batters are different.**
 ```
 --
 **> Right-handed batters get on base more often **
@@ -261,8 +239,6 @@ prop_Batting %>%
 --
 
 **> Left-handed batters hit more homeruns**
-
-[***](#signf)
 
 ---
 
@@ -414,6 +390,7 @@ changeup_props <- prop_count %>%
                             "2-0" = "two_zero",
                             "2-1" = "two_one", 
                             "2-2" = "two_two",
+                            "3-0" = "three_zero",
                             "3-1" = "three_one", 
                             "3-2" = "three_two"))
 breaking_props <- prop_count %>% 
@@ -428,6 +405,7 @@ breaking_props <- prop_count %>%
                             "2-0" = "two_zero",
                             "2-1" = "two_one", 
                             "2-2" = "two_two",
+                            "3-0" = "three_zero",
                             "3-1" = "three_one", 
                             "3-2" = "three_two"))
 fast_props <- prop_count %>% 
@@ -451,31 +429,35 @@ fast_props <- prop_count %>%
 library(patchwork)
 counts <- c("0-0", "0-1", "0-2", "1-0", "1-1", "1-2", "2-0", "2-1", "2-2",
             "3-0", "3-1", "3-2")
-counts2 <- c("0-0", "0-1", "0-2", "1-0", "1-1", "1-2", "2-0", "2-1", "2-2",
-             "3-1", "3-2")
 g1 <- changeup_props %>% 
   ggplot(aes(x = count, y = prop)) +
   theme_bw() +
   geom_col(fill= "#238A8DFF") +
   labs(title = "Changeup",
-       y = "proportion") +
-  scale_x_discrete(limits = counts2)
+       x = "Ball-Strike Count",
+       y = "Proportion") +
+  scale_x_discrete(limits = counts) +
+  coord_flip()
 g2 <- breaking_props %>% 
   ggplot(aes(x = count, y = prop)) +
   theme_bw() +
   geom_col(fill= "#238A8DFF") +
   labs(title = "Breaking balls",
-       y = "proportion") +
-  scale_x_discrete(limits = counts2)
+       x = "Ball-Strike Count",
+       y = "Proportion") +
+  scale_x_discrete(limits = counts)+
+  coord_flip()
 g3 <- fast_props %>% 
   ggplot(aes(x = count, y = prop)) +
   theme_bw() +
   geom_col(fill= "#238A8DFF") +
   labs(title = "Fastball",
-       y = "proportion") +
-  scale_x_discrete(limits = counts)
+       x = "Ball-Strike Count",
+       y = "Proportion") +
+  scale_x_discrete(limits = counts)+
+  coord_flip()
 
-g1 + g2 + g3
+g1 + g2 + g3 + labs(caption = "All pitch types in the dataset categorized as either changeup, breaking balls, or fastball")
 ```
 --
 **> Fastballs are the most common type of pitch**
@@ -547,7 +529,7 @@ kmeans <- std_batting %>%
   theme_bw() +
   theme(legend.position = "bottom") +
   coord_fixed() +
-  labs(x = "Standardized hit distance", y = "Standardized launch speed")
+  labs(x = "Standardized hit distance", y = "Standardized launch speed", color = "Batted balls clusters")
 
 #Kmeans tends to be best used for more circular looking patterns. 
 #there’s probably only one cluster here” rather than convincing yourself that there should be more.
@@ -571,21 +553,18 @@ grid.arrange(elbow, kmeans, nrow =1)
 #mean(table(Batting$player_name)) 
 #average at bats = 17, remove players who've batted less than 5 times 
 
-players <- Batting %>% 
+players <- std_batting %>% 
   group_by(player_name) %>% 
   filter(n() > 5) %>%  #filter players who've batted more than 5 times
   summarise_all(.funs = mean, .groups = "drop") #take player averages
-
-filter_players <- players %>% 
-  drop_na(hit_distance_sc, launch_speed) #get rid of rows that have NA's in hit distance and launch speed
 
 
 # Try hierarchical clustering
 #minimax
 
 library(protoclust)
-player_dist <- dist(dplyr::select(filter_players,
-                                  hit_distance_sc, launch_speed))
+player_dist <- dist(dplyr::select(players,
+                                  std_hit, std_speed))
 player_minimax <- protoclust(player_dist)
 
 # Look at dendrogram
@@ -611,16 +590,16 @@ ggdendrogram(player_minimax,
 minimax_player_clusters <- 
   protocut(player_minimax, k = 3) #where to cut tree
 
-filter_players %>%
+players %>%
   mutate(player_clusters = 
            as.factor(minimax_player_clusters$cl)) %>%
-  ggplot(aes(x = hit_distance_sc, y = launch_speed,
+  ggplot(aes(x = std_hit, y = std_speed,
              color = player_clusters)) +
   geom_point(alpha = 0.5) + 
   ggthemes::scale_color_colorblind() +
   theme_bw() +
   theme(legend.position = "bottom") +
-  labs(x = "Hit distance (feet)", y = "Launch speed (mph)")
+  labs(x = "Hit distance (feet)", y = "Launch speed (mph)", color = "Player Clusters")
 
 ```
 ]
@@ -631,15 +610,15 @@ class: inverse center middle
 
 ```{r, echo=FALSE, fig.align='center'}
 # View who the prototypes are
-player_prototypes <- filter_players %>%
-  dplyr::select(player_name, hit_distance_sc, launch_speed) %>%
+player_prototypes <- players %>%
+  dplyr::select(player_name, std_hit, std_speed) %>%
   slice(minimax_player_clusters$protos)
 
 # Label prototypes on graph 
-filter_players %>%
+players %>%
   mutate(player_clusters = 
            as.factor(minimax_player_clusters$cl)) %>%
-  ggplot(aes(x = hit_distance_sc, y = launch_speed,
+  ggplot(aes(x = std_hit, y = std_speed,
              color = player_clusters)) +
   geom_point(alpha = 0.5) + 
   geom_label(data = mutate(player_prototypes, 
@@ -648,29 +627,16 @@ filter_players %>%
   ggthemes::scale_color_colorblind() +
   theme_bw() +
   theme(legend.position = "bottom") +
-  labs(x = "Hit Distance (feet)", y = "Launch Speed (mph)")
+  labs(x = "Hit Distance (feet)", y = "Launch Speed (mph)", color = "Player Clusters")
 
 # View cluster 3
 
-best_batters <- filter_players %>%
+best_batters <- players %>%
   mutate(player_clusters = 
            as.factor(minimax_player_clusters$cl)) %>% 
   filter(player_clusters == 3) %>% 
   pull(player_name)
 ```
----
-
-### Cluster 3
-
-```{r, echo=FALSE}
-best <- rename(data.frame(best_batters), `Strongest Batters:` = best_batters)
-
-knitr::kable(best, format = 'html') 
-
-#group of strongest batters this season in terms of further hit distance and highest launch speed
-```
-
-
 
 ---
 
@@ -702,7 +668,49 @@ class: inverse center middle
 ## Appendix
 
 ---
+# Background
+### Methods:
+.pull-left[
+a. **Events re-coded as "On-Base", "Out", or "Homerun"**
+```{r eval=FALSE}
+mutate(events = 
+    fct_recode(events, 
+    "On-base" = "double", 
+    "On-base" = "field_error",
+    "Out" = "double_play",
+    "Out" = "field_out",
+    "On-base" = "fielders_choice",
+    "Out" = "fielders_choice_out",
+    "Homerun" = "home_run"
+    ...
+```
 
+       
+]
+
+.pull-right[
+
+b. **Pitch Types re-coded as "Fastball", "Change-up", and "Breaking Ball"**
+
+```{r eval=FALSE}
+mutate(pitch_type =
+    fct_recode(pitch_type, 
+               "Changeup" = "CH", 
+               "Breaking ball" = "CU",
+               "Changeup" = "EP",
+               "Fastball" = "FA",
+               "Fastball" = "FC", 
+               "Fastball" = "FF", 
+               "Fastball" = "FS",
+               "Breaking ball" = "KC",  
+               "Fastball" = "SI",  
+               "Breaking ball" = "SL"))
+```
+
+
+]
+
+---
 ## How does release speed affect launch speed? 
 
 ```{r, speed, echo=FALSE, fig.align='center', out.width='90%'}
@@ -723,6 +731,7 @@ Batting %>%
 name: signf
 
 ## Significance tests for handedness
+
 
 ```{r test for significance, out.width='25%', echo=FALSE, warning=FALSE, include = FALSE}
 
@@ -782,72 +791,16 @@ data.frame(events = c("Onbase", "Outs", "Homerun"),
   knitr::kable(format = 'html') 
 ```
 
-[Back](#next)
 ---
 
-#Script
+### Cluster 3 - Total of 81 players
 
+```{r, echo=FALSE}
+best <- rename(data.frame(best_batters), `Strongest Batters:` = best_batters)
 
-hello all, Jackie and I are very excited to present our project on exploratory data analysis on major league baseball data
+#count(best)
+head(best, 10)
 
-——
-
-before diving in, I would like to provide some high level goals that helped guide the process of working on this project.
-
-to start off, we wanted to make sure we really understood the components of baseball statistics, especially myself as i am not as familiar with the intricacies of baseball as jackie is. 
-
-after taking that first initial step, we wanted to explore this mlb batted balls data in order to discover trends, patterns, and answer several questions and hypotheses we were curious about.
-
-and ultimately we hope that this initial eda can guide and inform future models that either predict outcomes or hopefully improve player or team performance
-
-——
-
-we would now like to quickly mention on how we filtered some variables, for instance how we recoded all the events in our dataset, such as double, field-error, etc as either on-base, out, or hr
-
-——
-
-Upon having this data on batted balls, the first question that came to mind was what is the most common way of getting out or more specifically what was the distribution of ways of getting out cuz of course we assumed that field outs had to be most common, but how did that proportion compare to the other ways a player could get out
-
-Our results indicate that indeed field outs are the most common, by a substantial margin, much more than we initially thought, followed by force outs and grounded into double play
-
-——
-
-then we wondered…
-
-In terms of hit location, this was expected, as you can see from the plot that left handed hitters tended to hit more towards first base and right field compared to right-handed batter who hit more towards the left side of the field. This plot also contains pitch type but jackie will get into that in more depth later on
-
-——
-
-Our next question was …
-
-looking solely the proportions of left-handed and right-handed batters among their respective groups, we 
-see from this barplot that 1. 2. 3. And although this difference seems pretty small, t-tests indicate that all three differences are significant at an alpha level of 0.5
-the actual pvalues are in our appendix if you are interested in that later
-
-——
-
-hit distance: distance of the batted ball in feet
-launch speed: exit velocity of the ball off the bat (mph)
-
-k means as it best used for more circular looking patterns and looking at our elbow plot on the left, we decided on 3 clusters.
-
-If I could direct your attention to the right, we see that
-short distance slow launch speed is a cluster, short distance, high launch speed, and further distance and high launch speed
-
-this clustering was pretty trivial and not as informative as we had hoped since it just groups of batted balls 
-
-—-
-
-therefore, this led us to clustering players instead on batted balls
-
-because we ultimately wanted a prototype observation or representative player in each cluster to make communicating results easier, we used the minimax linkage function and cut the dendrogram on the left to create 3 clusters or the 3 groups of players you see on the plot on the right
-
-—
-
-this graph displays the prototypes or players that are represent the 3 clusters, as sean murphy represents the players so far who have batted balls furthest with the fastest launch speed so far this season
-
-I should note that we took out players who had less than 5 at bats this season, as the average at bats per player was around 17
-—
-
-and this table lists all of the players that are part of that third cluster, which we are categorizing as the strongest batters this season
+#group of strongest batters this season in terms of further hit distance and highest launch speed
+```
 
