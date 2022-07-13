@@ -1,0 +1,389 @@
+---
+title: "BONUS: Animations, plotly, colors, and themes"
+output: 
+  html_document:
+    toc:  true
+    toc_float:  true
+    code_folding:  show
+---
+
+# Animations, `plotly`, colors, and themes
+  
+***
+
+###  The graphs below don't have proper titles, axis labels, legends, etc.  Please take care to do this on your own graphs.
+
+***
+
+## Use [`gganimate`](https://gganimate.com/) to add animations
+
+By far, the simplest way to create visualizations with animations is to use the [`gganimate` package](https://gganimate.com/). This effectively works as an extension to `ggplot` figures but with the inclusion of various `transition_*` functions
+
+### When should we animate plots?
+
+First, let's think about when you should __NOT__ animate a plot. We first create a visualization of `penguins` data from the [`palmerpenguins` package](https://allisonhorst.github.io/palmerpenguins/), of bill length on the `y`-axis against the body mass on the `x-axis` colored by `species`:
+
+```{r}
+library(tidyverse)
+library(palmerpenguins)
+
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_bw()
+
+```
+
+Now, we _could_ do the following: use the `gganimate` package to only display one `species` at a time with the `transition_states()` function:
+
+```{r, warning = FALSE}
+library(gganimate)
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_bw() +
+  transition_states(species,
+                    transition_length = 0.5,
+                    state_length = 1)
+
+```
+
+The use of `transition_length` and `state_length` indicate how much _relative_ time should take place when transitioning between states and the pause at each state, respectively.  __But the above use of animation is useless!__
+
+![](https://c.tenor.com/YdcVUzGWl2wAAAAC/useless-starwars.gif)
+
+__So when should you consider using animation?__
+
+One appropriate usage is in the context of storytelling with data, to emphasize some aspect of your visual display. For instance, we'll borrow this F1 racing dataset from [Meghan Hall's iteration of 36-315](https://cmu-36315.netlify.app/) to compare the performance of three racing teams:
+
+```{r, warning = FALSE}
+# First load the data from Meghan's github
+f1_data_ex <- read_csv('https://raw.githubusercontent.com/meghall06/CMU-36-315-site/main/data/constructor_pts.csv') %>%
+  filter(name %in% c("McLaren", "Renault", "Racing Point"),
+         year == 2020)
+
+# Now display the results across the rounds:
+f1_data_ex %>%
+  ggplot(aes(x = round, y = points, group = name, color = name)) +
+  geom_line(size = 2) +
+  scale_x_continuous(breaks = seq(1, 17, 1)) +
+  labs(title = "The race for third place in the 2020 F1 season",
+       y = "Accumulated points", x = NULL) +
+  theme_bw()
+```
+
+
+From above we can see the accumulated points increasing over time for each team, with McLaren finishing better than both, Racing Point and Renault, at the end. But we could incrementally reveal the results at each stage emphasize the story of progression. We're not adding another dimension to the display, but we emphasize the intermediate results through animation with the `transition_reveal()` function:
+
+```{r, warning = FALSE}
+f1_data_ex %>%
+  ggplot(aes(x = round, y = points, group = name, color = name)) +
+  geom_line(size = 2) +
+  scale_x_continuous(breaks = seq(1, 17, 1)) +
+  labs(title = "The race for third place in the 2020 F1 season",
+       y = "Accumulated points", x = NULL) +
+  theme_bw() +
+  # Reveal the results by round
+  transition_reveal(round)
+```
+
+
+The most effective use of animation is when it adds another dimension to your visualization, typically in the form of time. The previous visualization only animated across the x-axis - it did NOT add another variable in our data. However, animation can let us bring in another dimension so that we can see differences between relationships of variables in various ways. You should watch [Hans Rosling's 200 Countries, 200 Years, 4 Minutes](https://www.youtube.com/watch?v=jbkSRLYSojo) to see one example in action. We can make similar visualizations with `gganimate`. 
+
+In the code chunk below, we're going to display yearly summaries about housing sales in TX (dataset comes loaded with `ggplot2`). We're going to plot the average number of active listings and average median sale price for each city-year combination in the data. For context, we're going to highlight the data for Houston in red with a larger point size:
+
+```{r}
+# Load the scales package for better labeling of the axes
+txhousing %>% 
+  group_by(city, year) %>% 
+  summarize(median = mean(median, na.rm = TRUE),
+            listings = mean(listings, na.rm = TRUE)) %>% 
+  ggplot(aes(x = median, y = listings, 
+             color = (city == "Houston"),
+             size = (city == "Houston"))) +
+  # Hide the legend for the point layer
+  geom_point(alpha = 0.5, show.legend = FALSE) +
+  # Manual color label
+  scale_color_manual(values = c("black", "darkred")) +
+  # Manual size adjustment
+  scale_size_manual(values = c(2, 4)) +
+  scale_x_continuous(labels = scales::dollar, name = "Median Price") +
+  scale_y_continuous(labels = scales::label_number_si()) +
+  theme_bw() +
+  labs(x = "Median Price", y = "Avg. of Monthly Listings",
+       subtitle = "Houston in red")
+```
+
+
+In the figure above we do not have year included in any way. But we can use the `transition_time()` function to animate the visual over time, while also updating the plot title to include the displayed year:
+
+```{r, warning = FALSE}
+# Load the scales package for better labeling of the axes
+txhousing %>% 
+  group_by(city, year) %>% 
+  summarize(median = mean(median, na.rm = TRUE),
+            listings = mean(listings, na.rm = TRUE)) %>% 
+  ggplot(aes(x = median, y = listings, 
+             color = (city == "Houston"),
+             size = (city == "Houston"))) +
+  # Hide the legend for the point layer
+  geom_point(alpha = 0.5, show.legend = FALSE) +
+  # Manual color label
+  scale_color_manual(values = c("black", "darkred")) +
+  # Manual size adjustment
+  scale_size_manual(values = c(2, 4)) +
+  scale_x_continuous(labels = scales::dollar, name = "Median Price") +
+  scale_y_continuous(labels = scales::label_number_si()) +
+  theme_bw() +
+  labs(x = "Median Price", y = "Avg. of Monthly Listings",
+       subtitle = "Houston in red", 
+       title = "Year: {frame_time}") +
+  transition_time(year)
+```
+
+From viewing the above visual, you can see how animation makes changes appear more dramatic between years - versus plotting each year separately with facets. We can then save the above animation as a GIF with the `anim_save("INSERT/FILEPATH")` function, which will save the last animation you made by default.
+
+```{r, eval = FALSE}
+anim_save("examples/txhousing.gif")
+```
+
+Some key points to think about before adding animation to a visualization:
+
+1. Always make and describe the original / base graphic first that does NOT include animation.
+
+2. Before adding animation to the graph, ask yourself: How would animation give you additional insights about the data **that you would otherwise not be able to**?
+
+3. Never add animation just because it's cool! 
+
+4. When presenting, make sure you explain exactly what is being displayed with animation and what within the animation you want to emphasize. This will help you determine if animation is actually worth including.
+
+
+## Use [`plotly`](https://plotly.com/ggplot2/) to make visuals interactive
+
+Rather than spending a lot of time to make a fully interactive app, `plotly` makes it incredibly easy to take an existing `ggplot` object, then use the `ggplotly` function to make it interactive. For instance, let's take our `penguins` plot from before and assign it to an object named `scatter_plain`:
+
+```{r}
+scatter_plain <- penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_bw()
+scatter_plain
+```
+
+
+Now, we're going to load the `plotly` package and use `ggplotly` to make this plot interactive:
+
+```{r}
+library(plotly)
+ggplotly(scatter_plain)
+```
+
+
+Notice that there are several ways you can interactive with the plot, you can filter, zoom, and get additional information by hovering over the points with the tooltip. You can also customize what's displayed in the tooltip in various ways. For instance, I can update the above plot to include `text` denoting the penguin's `sex`. Then when we call `ggplotly` we can specify what is included in the tooltip when hovering over the points:
+
+```{r}
+scatter_upd <- penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species,
+             text = paste("sex:", sex))) +
+  geom_point(alpha = 0.5, size = 2) +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_bw()
+# Display the text with the sex variable and the penguins species with the tooltip
+ggplotly(scatter_upd, tooltip = c("text", "species"))
+```
+
+
+## Notes on colors in plots
+
+Three types of color scales to work with:
+
+1. __Qualitative__: distinguishing discrete items that don't have an order (nominal categorical). Colors should be distinct and equal with none standing out unless otherwise desired for emphasis.
+
++ Do __NOT__ use a discrete scale on a continuous variable
+
+2. __Sequential__:  when data values are mapped to one shade, e.g., in a choropleth, for an ordered categorical variable or low to high continuous variable
+
++ Do __NOT__ use a sequential scale on an unordered variable
+
+3. __Divergent__: think of it as two sequential scales with a natural midpoint
+midpoint could represent 0 (assuming +/- values) or 50% if your data spans the full scale
+
++ Do __NOT__ use a divergent scale on data without natural midpoint
+
+
+### Options for `ggplot2` colors
+
+The default color scheme is pretty bad to put it bluntly, but `ggplot2` has ColorBrewer built in which makes it easy to customize your color scales. For instance, we change the palette for the species plot from before.
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  scale_color_brewer(palette = "Set2") +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_bw()
+```
+
+Something you should keep in mind is to pick a [color-blind friendly palette](http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/). One simple way to do this is by using the `ggthemes` package which has color-blind friendly palettes included:
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_bw()
+```
+
+In terms of displaying color from low to high, the [viridis scales](https://ggplot2.tidyverse.org/reference/scale_viridis.html) are excellent choices (and are also color-blind friendly!).
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, 
+             color = flipper_length_mm)) +
+  geom_point(alpha = 0.5, size = 2) +
+  scale_color_viridis_c() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)",
+       color = "Flipper Length (mm)") +
+  theme_bw()
+```
+
+
+## Notes on themes
+
+We have not explicitly talked about this throughout the summer, but you have seen various changes to the `theme` of plots for customization. __You will constantly be changing the theme of your plots to optimize the display.__ Fortunately, there are a number of built-in themes you can use to start with rather than the default `theme_gray()`:
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_gray()
+```
+
+For instance, you have seen me use `theme_bw()` many times:
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_bw()
+```
+
+There are options such as `theme_minimal()`:
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_minimal()
+```
+
+
+or `theme_classic()`:
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_classic()
+```
+
+
+There are also packages with popular, such as the `ggthemes` package which includes, for example, `theme_economist()`:
+
+```{r}
+library(ggthemes)
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_economist()
+```
+
+and `theme_fivethirtyeight()` to name a couple:
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)") +
+  theme_fivethirtyeight()
+```
+
+With any theme you have picked, you can then modify specific components directly using the `theme()` layer. There are [many aspects of the plot's theme to modify](https://ggplot2.tidyverse.org/reference/theme.html), such as my decision to move the legend to the bottom of the figure, drop the legend title, and increase the font size for the y-axis:
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)",
+       title = "Larger penguins tend to have larger bills",
+       subtitle = "Positive relationship between mass and length is consistent across species") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.text.y = element_text(size = 14),
+        axis.text.x = element_text(size = 6))
+```
+
+
+If you're tired of explicitly customizing every plot in the same way all the time, then you should make a custom theme. It's quite easy to make a custom theme for `ggplot2` and of course [there are an incredible number of ways to customize your theme](https://themockup.blog/posts/2020-12-26-creating-and-using-custom-ggplot2-themes/). In the code chunk, I modify the `theme_bw()` theme using the `%+replace%` argument to make my new theme named `my_theme()` - which is stored as a function:
+
+```{r}
+my_theme <- function () {
+  # Start with the base font size
+  theme_bw(base_size = 10) %+replace%
+    theme(
+      panel.background  = element_blank(),
+      plot.background = element_rect(fill = "transparent", color = NA), 
+      legend.position = "bottom",
+      legend.background = element_rect(fill = "transparent", color = NA),
+      legend.key = element_rect(fill = "transparent", color = NA),
+      axis.ticks = element_blank(),
+      panel.grid.major = element_line(color = "grey90", size = 0.3), 
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(size = 18, 
+                                hjust = 0, vjust = 0.5, 
+                                face = "bold", 
+                                margin = margin(b = 0.2, unit = "cm")),
+      plot.subtitle = element_text(size = 12, hjust = 0, 
+                                   vjust = 0.5, 
+                                   margin = margin(b = 0.2, unit = "cm")),
+      plot.caption = element_text(size = 7, hjust = 1,
+                                  face = "italic", 
+                                  margin = margin(t = 0.1, unit = "cm")),
+      axis.text.x = element_text(size = 13),
+      axis.text.y = element_text(size = 13)
+    )
+}
+```
+
+
+Now I can go ahead and my plot from before with this theme:
+
+```{r}
+penguins %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  ggthemes::scale_color_colorblind() +
+  labs(x = "Body Mass (g)", y = "Bill Length (mm)",
+       title = "Larger penguins tend to have larger bills",
+       subtitle = "Positive relationship between mass and length is consistent across species") +
+  my_theme()
+```
+
+
